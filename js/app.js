@@ -8,7 +8,7 @@
 const CONFIG = {
   GAS_URL: '',
   ACORN_GOAL: 10,
-  QUIZ_LENGTH: 40,
+  QUIZ_LENGTH: 20,
   IMG: {
     acorn: 'assets/acorn.svg',
     stamp: 'assets/stamp.svg',
