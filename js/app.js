@@ -8,7 +8,7 @@
 const CONFIG = {
   GAS_URL: '',
   ACORN_GOAL: 10,
-  QUIZ_LENGTH: 10,
+  QUIZ_LENGTH: 40,
   IMG: {
     acorn: 'assets/acorn.svg',
     stamp: 'assets/stamp.svg',
@@ -513,7 +513,7 @@ function finishQuiz() {
   state.done[topic] = true;
   save();
   if (r.first === r.total && r.total >= 10) award('perfect');
-  if (r.hints === 0 && r.first >= 7) award('independent');
+  if (r.hints === 0 && r.first >= r.total * 0.7) award('independent');
   if (state.done.trig && state.done.circle) award('explorer');
 
   $('#quiz-progress-fill').style.width = '100%';

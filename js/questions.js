@@ -57,8 +57,8 @@ const BADGES = [
   { id: 'special-streak', icon: '⭐', name: '특수각 달인', desc: '특수각 삼각비 문제 5개 연속 첫 시도 정답' },
   { id: 'inscribed-master', icon: '⭕', name: '원주각 마스터', desc: '원주각 성질 문제 첫 시도 정답 누적 8개' },
   { id: 'tangent-pro', icon: '📐', name: '접선 탐험가', desc: '접선과 현 문제 3개 연속 첫 시도 정답' },
-  { id: 'perfect', icon: '💯', name: '만점 다람쥐', desc: '퀴즈 10문제 모두 첫 시도에 정답' },
-  { id: 'independent', icon: '🌱', name: '스스로 해결', desc: '힌트 없이 퀴즈 완주 (7문제 이상 정답)' },
+  { id: 'perfect', icon: '💯', name: '만점 다람쥐', desc: '퀴즈 40문제 모두 첫 시도에 정답' },
+  { id: 'independent', icon: '🌱', name: '스스로 해결', desc: '힌트 없이 퀴즈 완주 (70% 이상 정답)' },
   { id: 'first-stamp', icon: '🏵️', name: '첫 칭찬 도장', desc: '도토리 10개로 첫 칭찬 도장 받기' },
   { id: 'explorer', icon: '🗺️', name: '숲속 탐험가', desc: '삼각비 · 원의 성질 퀴즈 모두 완주' },
 ];
