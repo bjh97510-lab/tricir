@@ -137,7 +137,7 @@ function circleSVG({ pts = {}, center = true, segs = [], angles = [], tangent = 
   for (const a of angles) {
     const isO = a.v === 'O';
     out += angleMark(P[a.v], P[a.a], P[a.b], {
-      r: isO ? 20 : 24, textR: isO ? 38 : 44, text: a.text,
+      r: a.r ?? (isO ? 20 : 24), textR: a.textR ?? (isO ? 38 : 44), text: a.text,
       color: isO ? COLOR.adj : COLOR.opp, textColor: isO ? COLOR.adjText : COLOR.oppText,
     });
   }

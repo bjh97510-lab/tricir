@@ -64,7 +64,7 @@ const BADGES = [
 ];
 
 /* =========================================================
-   문제 은행 (단원별 40문항, 난이도 하 · 중하)
+   문제 은행 (단원별 하 · 중하 40문항 + 중상 10문항)
    wrong: [보기 HTML, 오답 유형]   hints: [1단계 개념, 2단계 수식]
    ========================================================= */
 const RC = '∠C = 90°인 직각삼각형 ABC에서';
@@ -452,7 +452,154 @@ const CIRCLE_QUESTIONS = [
   },
 ];
 
-const QUESTION_BANK = { trig: TRIG_QUESTIONS, circle: CIRCLE_QUESTIONS };
+/* =========================================================
+   중상 문제 (단원별 10문항, 두 단계 이상 풀이)
+   ========================================================= */
+const TRIG_ADVANCED = [
+  {
+    concept: 'trig-def', level: '중상', q: `0° &lt; A &lt; 90°이고 sin A = ${fr(5, 13)}일 때, tan A의 값은?`,
+    answer: fr(5, 12), wrong: [[fr(12, 13), 'sin-cos-swap'], [fr(12, 5), 'reciprocal'], [fr(13, 12), 'ratio-mix']],
+    hints: ['빗변이 13, 높이가 5인 직각삼각형을 그리고 밑변을 먼저 구해요.', `밑변 = √(13² − 5²), tan A = ${fr('높이', '밑변')}`],
+    explain: `밑변 = √(169 − 25) = 12 → tan A = ${fr(5, 12)}`,
+  },
+  {
+    concept: 'trig-def', level: '중상', q: `0° &lt; A &lt; 90°이고 tan A = ${fr(3, 4)}일 때, sin A + cos A의 값은?`,
+    answer: fr(7, 5), wrong: [['1', 'calc'], [fr(7, 4), 'ratio-mix'], [fr(12, 25), 'calc']],
+    hints: ['높이가 3, 밑변이 4인 직각삼각형의 빗변부터 구해요.', `빗변 = 5 → sin A = ${fr(3, 5)}, cos A = ${fr(4, 5)}`],
+    explain: `빗변 = 5, sin A + cos A = ${fr(3, 5)} + ${fr(4, 5)} = ${fr(7, 5)}`,
+  },
+  {
+    concept: 'trig-def', level: '중상', q: `0° &lt; A &lt; 90°이고 cos A = ${fr(2, 3)}일 때, sin A의 값은?`,
+    answer: fr('√5', 3), wrong: [[fr(1, 3), 'calc'], [fr('√5', 2), 'ratio-mix'], [fr(3, 2), 'reciprocal']],
+    hints: ['빗변이 3, 밑변이 2인 직각삼각형을 그리고 높이를 구해요.', '높이 = √(3² − 2²)'],
+    explain: `높이 = √(9 − 4) = √5 → sin A = ${fr('√5', 3)}`,
+  },
+  {
+    concept: 'trig-unit', level: '중상', fig: { type: 'unit', theta: toDeg(Math.asin(0.6)) },
+    q: `${UNIT} sin x = 0.6이면 cos x의 값은?`,
+    answer: '0.8', wrong: [['0.4', 'calc'], ['0.75', 'ratio-mix'], ['1.6', 'calc']],
+    hints: ['직각삼각형 OHP에서 OP = 1, PH = sin x 예요.', 'OH = √(1² − 0.6²)'],
+    explain: 'OH = √(1 − 0.36) = √0.64 = 0.8 → cos x = 0.8',
+  },
+  {
+    concept: 'trig-apply', level: '중상', q: `${RC} ∠A = 30°, BC = 4일 때, AB의 길이는?`,
+    fig: { type: 'tri', theta: 30, labels: { opp: '4', hyp: '?' }, angleText: '30°' },
+    answer: '8', wrong: [['2', 'reciprocal'], ['4√3', 'ratio-mix'], [`${fr('8√3', 3)}`, 'sin-cos-swap']],
+    hints: ['BC는 높이, AB는 빗변이에요. sin 30° = BC / AB 로 식을 세워요.', `${fr(1, 2)} = ${fr(4, 'AB')} → AB = ?`],
+    explain: `sin 30° = ${fr(4, 'AB')} = ${fr(1, 2)} → AB = 8`,
+  },
+  {
+    concept: 'trig-apply', level: '중상', q: `${RC} ∠A = 60°, AC = 5일 때, BC의 길이는?`,
+    fig: { type: 'tri', theta: 60, labels: { adj: '5', opp: '?' }, angleText: '60°' },
+    answer: '5√3', wrong: [[fr('5√3', 3), 'special-30-60'], ['10', 'ratio-mix'], [fr(5, 2), 'sin-cos-swap']],
+    hints: ['BC는 높이, AC는 밑변이에요. 높이와 밑변을 잇는 삼각비는?', 'BC = AC × tan 60°'],
+    explain: 'BC = 5 × tan 60° = 5√3',
+  },
+  {
+    concept: 'trig-apply', level: '중상', q: '나무에서 30 m 떨어진 곳에서 나무 꼭대기를 올려본각의 크기가 30°일 때, 나무의 높이는? (눈높이는 생각하지 않아요)',
+    fig: { type: 'tri', theta: 30, labels: { adj: '30 m', opp: '?' }, angleText: '30°' },
+    answer: '10√3 m', wrong: [['30√3 m', 'special-30-60'], ['15 m', 'sin-cos-swap'], ['15√3 m', 'ratio-mix']],
+    hints: ['나무의 높이가 "높이", 떨어진 거리가 "밑변"이에요. 높이와 밑변을 잇는 삼각비는?', `높이 = 30 × tan 30° = 30 × ${fr('√3', 3)}`],
+    explain: `높이 = 30 × ${fr('√3', 3)} = 10√3 (m)`,
+  },
+  {
+    concept: 'trig-special', level: '중상', q: 'sin 60° × cos 30° − sin 30° × cos 60°의 값은?',
+    answer: fr(1, 2), wrong: [['1', 'calc'], ['0', 'special-30-60'], [fr('√3', 2), 'calc']],
+    hints: [`값을 먼저 써 보세요: sin 60° = cos 30° = ${fr('√3', 2)}, sin 30° = cos 60° = ${fr(1, 2)}`, `${fr('√3', 2)} × ${fr('√3', 2)} − ${fr(1, 2)} × ${fr(1, 2)}`],
+    explain: `${fr(3, 4)} − ${fr(1, 4)} = ${fr(2, 4)} = ${fr(1, 2)}`,
+  },
+  {
+    concept: 'trig-special', level: '중상', q: '2 sin 45° × cos 45° + tan 45°의 값은?',
+    answer: '2', wrong: [['1', 'calc'], ['3', 'calc'], ['1 + √2', 'special-45']],
+    hints: [`sin 45° = cos 45° = ${fr('√2', 2)}, tan 45° = 1`, `2 × ${fr('√2', 2)} × ${fr('√2', 2)} + 1`],
+    explain: `2 × ${fr(2, 4)} + 1 = 1 + 1 = 2`,
+  },
+  {
+    concept: 'trig-change', level: '중상', q: '0° &lt; x &lt; 45°일 때, sin x와 cos x의 크기를 바르게 비교한 것은?',
+    answer: 'sin x &lt; cos x', wrong: [['sin x &gt; cos x', 'trend'], ['sin x = cos x', 'trend'], ['알 수 없다', 'trend']],
+    hints: ['실험실의 "한눈에 비교"에서 두 곡선이 만나는 각은 몇 도였나요?', '45°에서 같아지고, 그보다 작은 각에서는 cos 곡선이 위에 있어요.'],
+    explain: '예) x = 30°: sin 30° = 0.5 &lt; cos 30° ≈ 0.866. 45°보다 작으면 항상 sin x &lt; cos x',
+  },
+];
+
+const CIRCLE_ADVANCED = [
+  {
+    concept: 'circle-central', level: '중상', q: '원 O에서 ∠APB = 50°일 때, ∠OAB의 크기는?',
+    fig: { type: 'circle', pts: { A: 220, B: 320, P: 90 }, segs: ['OA', 'OB', 'AB', 'PA', 'PB'],
+      angles: [{ v: 'P', a: 'A', b: 'B', text: '50°' }, { v: 'A', a: 'O', b: 'B', text: '?' }] },
+    ...degChoices(40, [[65, 'inscribed-no-double'], [50, 'calc'], [80, 'calc']]),
+    hints: ['먼저 ∠AOB의 크기를 구해 보세요. OA = OB(반지름)이에요.', '∠AOB = 2 × 50° = 100°, 삼각형 OAB는 이등변삼각형'],
+    explain: '∠AOB = 100° → ∠OAB = (180° − 100°) ÷ 2 = 40°',
+  },
+  {
+    concept: 'circle-central', level: '중상', q: '원 O에서 ∠OAB = 30°일 때, ∠APB의 크기는?',
+    fig: { type: 'circle', pts: { A: 210, B: 330, P: 90 }, segs: ['OA', 'OB', 'AB', 'PA', 'PB'],
+      angles: [{ v: 'A', a: 'O', b: 'B', text: '30°' }, { v: 'P', a: 'A', b: 'B', text: '?' }] },
+    ...degChoices(60, [[120, 'central-no-half'], [30, 'calc'], [75, 'calc']]),
+    hints: ['삼각형 OAB는 이등변삼각형이에요. ∠AOB부터 구해요.', '∠AOB = 180° − 2 × 30° = 120°, ∠APB = ½ × ∠AOB'],
+    explain: '∠AOB = 120° → ∠APB = ½ × 120° = 60°',
+  },
+  {
+    concept: 'circle-central', level: '중상', q: '원 O에서 ∠OAB = 25°일 때, ∠APB의 크기는?',
+    fig: { type: 'circle', pts: { A: 205, B: 335, P: 90 }, segs: ['OA', 'OB', 'AB', 'PA', 'PB'],
+      angles: [{ v: 'A', a: 'O', b: 'B', text: '25°' }, { v: 'P', a: 'A', b: 'B', text: '?' }] },
+    ...degChoices(65, [[130, 'central-no-half'], [25, 'calc'], [77.5, 'calc']]),
+    hints: ['삼각형 OAB는 이등변삼각형이에요. ∠AOB부터 구해요.', '∠AOB = 180° − 2 × 25° = 130°, ∠APB = ½ × ∠AOB'],
+    explain: '∠AOB = 130° → ∠APB = ½ × 130° = 65°',
+  },
+  {
+    concept: 'circle-central', level: '중상', q: '원 O에서 ∠AOB = 100°이고 점 P가 작은 호 AB 위에 있을 때, ∠APB의 크기는?',
+    fig: { type: 'circle', pts: { A: 220, B: 320, P: 270 }, segs: ['OA', 'OB', 'PA', 'PB'],
+      angles: [{ v: 'O', a: 'A', b: 'B', text: '100°', textR: 32 }, { v: 'P', a: 'A', b: 'B', text: '?', r: 14, textR: 26 }] },
+    ...degChoices(130, [[50, 'opposite-arc'], [100, 'central-no-half'], [260, 'half-double-swap']]),
+    hints: ['점 P가 작은 호 위에 있으면 ∠APB는 반대쪽 큰 호에 대한 원주각이에요.', '큰 호 AB에 대한 중심각 = 360° − 100° = 260°, ∠APB = ½ × 260°'],
+    explain: '∠APB = ½ × (360° − 100°) = 130°',
+  },
+  {
+    concept: 'circle-semicircle', level: '중상', q: '선분 AB가 원 O의 지름이고 ∠CAB = 25°일 때, ∠ADC의 크기는? (점 D는 점 B와 같은 쪽 호 위)',
+    fig: { type: 'circle', pts: { A: 180, B: 0, C: 50, D: 300 }, segs: ['AB', 'AC', 'BC', 'DA', 'DC'],
+      angles: [{ v: 'A', a: 'C', b: 'B', text: '25°' }, { v: 'D', a: 'A', b: 'C', text: '?' }] },
+    ...degChoices(65, [[25, 'same-arc'], [115, 'opposite-arc'], [90, 'semicircle']]),
+    hints: ['AB가 지름이니 ∠ACB = 90°예요. ∠ABC부터 구해요.', '∠ABC = 90° − 25°, ∠ADC는 ∠ABC와 같은 호 AC에 대한 원주각'],
+    explain: '∠ABC = 65°, ∠ADC = ∠ABC = 65° (같은 호 AC에 대한 원주각)',
+  },
+  {
+    concept: 'circle-tangent', level: '중상', q: '직선 SU가 점 T에서 원에 접하고 ∠ATU = 65°, ∠PTA = 45°일 때, ∠PAT의 크기는?',
+    fig: { type: 'circle', center: false, pts: { T: 270, A: 40, P: 130 }, tangent: { at: 'T', ends: ['U', 'S'] }, segs: ['TA', 'PA', 'PT'],
+      angles: [{ v: 'T', a: 'U', b: 'A', text: '65°' }, { v: 'T', a: 'P', b: 'A', text: '45°' }, { v: 'A', a: 'P', b: 'T', text: '?' }] },
+    ...degChoices(70, [[5, 'tangent-double'], [20, 'opposite-arc'], [45, 'calc']]),
+    hints: ['접선과 현이 이루는 각으로 ∠APT부터 구해요.', '∠APT = ∠ATU = 65°, 삼각형 APT의 내각의 합 = 180°'],
+    explain: '∠APT = 65° → ∠PAT = 180° − 65° − 45° = 70°',
+  },
+  {
+    concept: 'circle-tangent', level: '중상', q: '직선 SU가 점 T에서 원 O에 접하고 ∠ATU = 70°일 때, ∠OAT의 크기는?',
+    fig: { type: 'circle', pts: { T: 270, A: 50 }, tangent: { at: 'T', ends: ['U', 'S'] }, segs: ['TA', 'OA', 'OT'],
+      angles: [{ v: 'T', a: 'U', b: 'A', text: '70°' }, { v: 'A', a: 'O', b: 'T', text: '?' }] },
+    ...degChoices(20, [[40, 'half-double-swap'], [70, 'calc'], [55, 'inscribed-no-double']]),
+    hints: ['∠AOT = 2 × ∠ATU 를 먼저 구해요. OA = OT(반지름)이에요.', '∠AOT = 140°, 삼각형 OAT는 이등변삼각형'],
+    explain: '∠AOT = 140° → ∠OAT = (180° − 140°) ÷ 2 = 20°',
+  },
+  {
+    concept: 'circle-cyclic', level: '중상', q: '사각형 ABCD가 원에 내접하고 ∠A = 3x, ∠C = 2x일 때, x의 값은?',
+    ...degChoices(36, [[72, 'cyclic-equal'], [108, 'calc'], [54, 'calc']]),
+    hints: ['원에 내접하는 사각형에서 ∠A와 ∠C의 관계는?', '3x + 2x = 180°'],
+    explain: '5x = 180° → x = 36°',
+  },
+  {
+    concept: 'circle-cyclic', level: '중상', q: '사각형 ABCD가 원에 내접하고 ∠A = 95°, ∠B = 80°일 때, ∠C + ∠D의 크기는?',
+    ...degChoices(185, [[175, 'calc'], [180, 'cyclic-equal'], [360, 'cyclic-equal']]),
+    hints: ['∠C는 ∠A의 대각, ∠D는 ∠B의 대각이에요.', '∠C = 180° − 95°, ∠D = 180° − 80°'],
+    explain: '∠C = 85°, ∠D = 100° → ∠C + ∠D = 185°',
+  },
+  {
+    concept: 'circle-arc', level: '중상', q: '원 위의 세 점 A, B, C에 대해 호 AB : 호 BC : 호 CA = 2 : 3 : 4일 때, ∠ACB의 크기는?',
+    ...degChoices(40, [[80, 'central-no-half'], [60, 'arc-ratio'], [30, 'calc']]),
+    hints: ['세 호에 대한 중심각의 합은 360°예요.', '호 AB에 대한 중심각 = 360° × 2/9 = 80°'],
+    explain: '호 AB의 중심각 = 80° → ∠ACB = ½ × 80° = 40°',
+  },
+];
+
+const QUESTION_BANK = { trig: [...TRIG_QUESTIONS, ...TRIG_ADVANCED], circle: [...CIRCLE_QUESTIONS, ...CIRCLE_ADVANCED] };
 
 function figureSVG(fig) {
   if (!fig) return '';

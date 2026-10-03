@@ -8,7 +8,8 @@
 const CONFIG = {
   GAS_URL: '',
   ACORN_GOAL: 10,
-  QUIZ_LENGTH: 20,
+  QUIZ_BASIC: 20,      // 한 번에 낼 하 · 중하 문항 수
+  QUIZ_ADVANCED: 10,   // 한 번에 낼 중상 문항 수
   IMG: {
     acorn: 'assets/acorn.svg',
     stamp: 'assets/stamp.svg',
@@ -284,9 +285,13 @@ const quiz = { topic: 'trig', items: [], index: 0, results: [], cur: null, start
 
 function startQuiz() {
   quiz.topic = state.topic;
-  quiz.items = shuffle(QUESTION_BANK[quiz.topic])
-    .slice(0, CONFIG.QUIZ_LENGTH)
-    .sort((a, b) => (a.level === '하' ? 0 : 1) - (b.level === '하' ? 0 : 1)) // 쉬운 문제부터
+  const bank = QUESTION_BANK[quiz.topic];
+  const LEVEL_ORDER = { 하: 0, 중하: 1, 중상: 2 };
+  quiz.items = [
+    ...shuffle(bank.filter((q) => q.level !== '중상')).slice(0, CONFIG.QUIZ_BASIC),
+    ...shuffle(bank.filter((q) => q.level === '중상')).slice(0, CONFIG.QUIZ_ADVANCED),
+  ]
+    .sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) // 쉬운 문제부터
     .map((q) => ({
       ...q,
       choices: shuffle([{ html: q.answer, correct: true }, ...q.wrong.map(([html, mis]) => ({ html, mis, correct: false }))]),
