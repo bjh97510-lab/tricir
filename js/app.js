@@ -6,7 +6,7 @@
    - IMG: Artigraphy로 만든 PNG로 바꾸려면 경로만 수정 (예: 'assets/acorn.png')
    ========================================================= */
 const CONFIG = {
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbxFHvF-EXTHYuvXGUsBUEmV5FpAtt4V7nLVTj21HDGMPjsJNC1-oBvOJy1wltyoFZCjwA/exec',
+  GAS_URL: 'https://script.google.com/macros/s/AKfycbxn-HjrvJr45oHxhshg2MdQE_CmKVCgjzma-VDgfEILJOCl4pXh1bQIwGJRZ74pk1uZ6A/exec',
   ACORN_GOAL: 10,
   QUIZ_BASIC: 20,      // 한 번에 낼 하 · 중하 문항 수
   QUIZ_ADVANCED: 10,   // 한 번에 낼 중상 문항 수
