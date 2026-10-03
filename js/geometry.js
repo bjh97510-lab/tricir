@@ -597,3 +597,74 @@ function initTangent() {
   });
   $('#tan-reset').addEventListener('click', () => { Object.assign(tg, TAN_DEFAULT); renderTangent(); });
 }
+
+/* =========================================================
+   원 3: 원에 내접하는 사각형 드래그
+   ========================================================= */
+const CYC_C = { x: 180, y: 150 }, CYC_R = 112;
+const CYC_DEFAULT = { a: 150, b: 215, c: 300, d: 40 };
+const cyc = { ...CYC_DEFAULT, arcs: false, ext: false };
+const CYC_KEYS = ['a', 'b', 'c', 'd'];
+
+/** A → B → C → D 순서(반시계)가 유지되고 점끼리 12° 이상 떨어져 있는지 */
+function cyclicOrderOk(s) {
+  const offs = CYC_KEYS.map((k) => norm(s[k] - s.a));
+  for (let i = 1; i < 4; i++) if (offs[i] - offs[i - 1] < 12) return false;
+  return 360 - offs[3] >= 12;
+}
+
+function renderCyclic() {
+  const C = CYC_C, R = CYC_R;
+  const P = Object.fromEntries(CYC_KEYS.map((k) => [k, onCircle(C, R, cyc[k])]));
+  const angA = angleBetween(P.a, P.b, P.d), angB = angleBetween(P.b, P.a, P.c);
+  const angC = angleBetween(P.c, P.b, P.d), angD = angleBetween(P.d, P.a, P.c);
+
+  let out = `<circle cx="${C.x}" cy="${C.y}" r="${R}" fill="#FFFBEF" stroke="${COLOR.wood}" stroke-width="3"/>`;
+  if (cyc.arcs) {
+    // ∠A가 바라보는 호 BCD(노랑), ∠C가 바라보는 호 DAB(보라) — 두 호를 합치면 원 한 바퀴 360°
+    out += arcAt(C, cyc.b, norm(cyc.d - cyc.b), { r: R, color: '#F2B937', width: 8 });
+    out += arcAt(C, cyc.d, norm(cyc.b - cyc.d), { r: R, color: '#B9AEEE', width: 8 });
+  }
+  out += `<polygon points="${CYC_KEYS.map((k) => `${P[k].x},${P[k].y}`).join(' ')}" fill="#FFF1C9" opacity=".75"/>`;
+  out += CYC_KEYS.map((k, i) => svgLine(P[k], P[CYC_KEYS[(i + 1) % 4]], COLOR.wood, 3.5)).join('');
+  if (cyc.arcs) out += svgLine(P.b, P.d, '#D9C3A0', 2, '5 5');
+
+  const mark = (V, X, Y, color, textColor, val) => angleMark(V, X, Y, { r: 24, color, textColor, text: fmtDeg(val), textR: 44 });
+  out += mark(P.a, P.b, P.d, COLOR.opp, COLOR.oppText, angA) + mark(P.c, P.b, P.d, COLOR.opp, COLOR.oppText, angC);
+  out += mark(P.b, P.a, P.c, COLOR.adj, COLOR.adjText, angB) + mark(P.d, P.a, P.c, COLOR.adj, COLOR.adjText, angD);
+
+  let ext = null;
+  if (cyc.ext) {
+    // 변 CD를 D 바깥으로 늘인 점 E
+    const len = Math.hypot(P.d.x - P.c.x, P.d.y - P.c.y);
+    const E = { x: P.d.x + (P.d.x - P.c.x) / len * 70, y: P.d.y + (P.d.y - P.c.y) / len * 70 };
+    ext = angleBetween(P.d, E, P.a);
+    out += svgLine(P.d, E, COLOR.q, 2.5, '6 5') + svgText({ x: E.x + (E.x - P.d.x) * 0.2, y: E.y + (E.y - P.d.y) * 0.2 }, 'E', { size: 16, color: COLOR.q });
+    out += angleMark(P.d, E, P.a, { r: 34, color: COLOR.q, text: fmtDeg(ext), textR: 54 });
+  }
+  for (const k of CYC_KEYS) out += svgText(onCircle(C, R + 20, cyc[k]), k.toUpperCase());
+  out += svgHandle(P.a, COLOR.opp) + svgHandle(P.c, COLOR.opp) + svgHandle(P.b, COLOR.adj) + svgHandle(P.d, COLOR.adj);
+  $('#cyclic-svg').innerHTML = out;
+
+  $('#c-ac').textContent = `${fmtDeg(angA)} + ${fmtDeg(angC)} = ${fmtDeg(angA + angC)}`;
+  $('#c-bd').textContent = `${fmtDeg(angB)} + ${fmtDeg(angD)} = ${fmtDeg(angB + angD)}`;
+  $('#c-ext-row').hidden = !cyc.ext;
+  if (cyc.ext) $('#c-ext').textContent = `${fmtDeg(ext)} = ∠B`;
+
+  let note = '✔ 어떻게 옮겨도 마주 보는 두 각의 합은 180°예요.';
+  if (cyc.arcs) note += ` ∠A는 노란 호 BCD(${fmtDeg(norm(cyc.d - cyc.b))})의 ½, ∠C는 보라 호 DAB(${fmtDeg(norm(cyc.b - cyc.d))})의 ½ — 두 호를 합치면 360°라서 ∠A + ∠C = ½ × 360° = 180°!`;
+  if (cyc.ext) note += ` ∠D의 외각(${fmtDeg(ext)})은 180° − ∠D 이니, 마주 보는 ∠B(${fmtDeg(angB)})와 같아요.`;
+  $('#c-note').textContent = note;
+}
+
+function initCyclic() {
+  makeDraggable($('#cyclic-svg'), () => Object.fromEntries(CYC_KEYS.map((k) => [k, onCircle(CYC_C, CYC_R, cyc[k])])), (key, pt) => {
+    const next = { ...cyc, [key]: dirDeg(CYC_C, pt) };
+    if (!cyclicOrderOk(next)) return;   // 사각형이 꼬이지 않게
+    cyc[key] = next[key];
+    renderCyclic();
+  });
+  $('#cyc-arcs').addEventListener('change', (e) => { cyc.arcs = e.target.checked; renderCyclic(); });
+  $('#cyc-ext').addEventListener('change', (e) => { cyc.ext = e.target.checked; renderCyclic(); });
+  $('#cyc-reset').addEventListener('click', () => { Object.assign(cyc, CYC_DEFAULT); renderCyclic(); });
+}

@@ -535,3 +535,7 @@ button { font: inherit; color: inherit; }
   .ratio-row { font-size: 17px; }
   .special { font-size: 17px; }
 }
+
+/* 원에 내접하는 사각형 패널 */
+.cyclic-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: center; }
+@media (max-width: 960px) { .cyclic-layout { grid-template-columns: 1fr; } }

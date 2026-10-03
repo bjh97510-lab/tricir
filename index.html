@@ -395,7 +395,30 @@
           </article>
 
           <article class="panel wide">
-            <h3><span class="num">3</span> 꼭 기억할 원의 성질</h3>
+            <h3><span class="num">3</span> 원에 내접하는 사각형의 대각</h3>
+            <div class="cyclic-layout">
+              <div>
+                <p>네 꼭짓점이 모두 원 위에 있는 사각형 ABCD예요. <b class="c-handle">점 A, B, C, D</b>를 원 위에서 이리저리 옮겨 보세요. 마주 보는 두 각의 합은 항상 <b>180°</b>!</p>
+                <svg id="cyclic-svg" class="figure interactive" viewBox="0 0 360 300" role="img" aria-label="원에 내접하는 사각형 드래그 도구"></svg>
+                <div class="toggles">
+                  <label><input type="checkbox" id="cyc-arcs"> 호로 이유 보기</label>
+                  <label><input type="checkbox" id="cyc-ext"> ∠D의 외각 보기</label>
+                  <button class="link-btn" id="cyc-reset" type="button">처음 위치로</button>
+                </div>
+              </div>
+              <div>
+                <div class="readout">
+                  <div class="ratio-row"><span class="ratio-name c-opp">∠A + ∠C</span><b class="ratio-val" id="c-ac"></b></div>
+                  <div class="ratio-row"><span class="ratio-name c-adj">∠B + ∠D</span><b class="ratio-val" id="c-bd"></b></div>
+                  <div class="ratio-row" id="c-ext-row" hidden><span class="ratio-name c-q">∠D의 외각</span><b class="ratio-val" id="c-ext"></b></div>
+                </div>
+                <p class="tip" id="c-note"></p>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel wide">
+            <h3><span class="num">4</span> 꼭 기억할 원의 성질</h3>
             <ul class="facts">
               <li><b>원주각 = ½ × 중심각</b><span>한 호에 대한 원주각은 그 호에 대한 중심각의 절반</span></li>
               <li><b>같은 호 → 같은 원주각</b><span>한 호에 대한 원주각의 크기는 모두 같아요</span></li>

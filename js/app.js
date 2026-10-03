@@ -592,7 +592,7 @@ function showPage(name) {
   if (name === 'topic-home') renderTopicHome();
   if (name === 'quiz') startQuiz();
   if (name === 'concept-trig') { drawLab(); renderUnit(); renderExperiment(); }
-  if (name === 'concept-circle') { renderInscribed(); renderTangent(); }
+  if (name === 'concept-circle') { renderInscribed(); renderTangent(); renderCyclic(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -652,6 +652,7 @@ function init() {
   initExperiment();
   initInscribed();
   initTangent();
+  initCyclic();
 
   const lastId = readJSON(LAST_ID_KEY, '');
   if (lastId) $('#student-id').value = lastId;
