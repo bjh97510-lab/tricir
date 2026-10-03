@@ -5,9 +5,13 @@
  *  - 퀴즈기록 : 퀴즈를 끝낼 때마다 한 줄 (디지털 형성평가용 상세 기록)
  *  - 학생현황 : 학번별 최신 도토리 / 칭찬 도장 / 배지 (한 학생당 한 줄)
  *
- * 배포: 배포 > 새 배포 > 유형 '웹 앱'
- *       실행 사용자 '나', 액세스 권한 '모든 사용자'
- *       → 나온 URL을 js/app.js 의 CONFIG.GAS_URL 에 붙여 넣기
+ * 설정 순서
+ *  1) 구글 시트 → 확장 프로그램 → Apps Script → 이 코드 전체 붙여넣기 → 저장
+ *  2) 시트를 새로고침 → 메뉴 [🌰 수학 학습 → 1. 시트 준비하기] (처음 한 번 권한 허용)
+ *  3) Apps Script 화면 → 배포 → 새 배포 → 유형 '웹 앱'
+ *     실행 사용자 '나', 액세스 권한 '모든 사용자' → 배포 → 웹 앱 URL 복사
+ *  4) 그 URL을 js/app.js 의 CONFIG.GAS_URL 에 붙여 넣기
+ *  ※ 코드를 고친 뒤에는 [배포 관리 → 수정 → 버전: 새 버전]으로 다시 배포해야 반영돼요.
  */
 
 const SHEET_LOG = '퀴즈기록';
@@ -20,6 +24,39 @@ const STATUS_HEADERS = [
   '학번', '도토리', '칭찬도장', '누적정답', '배지',
   '최근단원', '최근점수', '최근이해도', '최근약한개념', '최근기록시간',
 ];
+
+/* ---------- 시트 메뉴 (처음 설정용) ---------- */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🌰 수학 학습')
+    .addItem('1. 시트 준비하기', 'setup')
+    .addItem('2. 테스트 기록 넣어 보기', 'testRecord')
+    .addToUi();
+}
+
+/** 기록용 시트 2개를 만들고 머리글 · 열 너비를 정리해요. (여러 번 실행해도 안전) */
+function setup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const log = getSheet_(ss, SHEET_LOG, LOG_HEADERS);
+  const status = getSheet_(ss, SHEET_STATUS, STATUS_HEADERS);
+  [log, status].forEach((sh) => {
+    sh.getRange(1, 1, 1, sh.getLastColumn()).setBackground('#CDEFE0').setFontWeight('bold');
+    sh.autoResizeColumns(1, sh.getLastColumn());
+  });
+  log.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm');
+  status.getRange('J:J').setNumberFormat('yyyy-mm-dd hh:mm');
+  ss.toast('시트 준비 완료! 이제 [배포 → 새 배포 → 웹 앱]으로 배포하세요.', '🌰 수학 학습', 8);
+}
+
+/** 웹 앱 없이도 기록이 잘 들어가는지 확인하는 테스트 (학번 99999로 한 줄 기록) */
+function testRecord() {
+  const res = doPost({ postData: { contents: JSON.stringify({
+    studentId: '99999', topic: '테스트', score: 25, total: 30, understanding: 83, durationSec: 600, hintCount: 3,
+    wrongConcepts: '원주각과 중심각×2', misconceptions: '중심각 1/2 누락×1', weakConcept: '원주각과 중심각',
+    acornCount: 5, stampCount: 2, totalCorrect: 25, badges: 'first-stamp',
+  }) } });
+  SpreadsheetApp.getActiveSpreadsheet().toast(res.getContent(), '테스트 결과 (학번 99999 줄은 지워도 돼요)', 8);
+}
 
 /** 퀴즈 결과 저장 */
 function doPost(e) {
@@ -65,6 +102,10 @@ function doPost(e) {
 
 /** 로그인 시 학번의 최신 기록 불러오기: ?studentId=30101 */
 function doGet(e) {
+  // 연결 확인: 웹 앱 주소 뒤에 ?ping=1 을 붙여 브라우저로 열면 {"ok":true,...} 가 보여요.
+  if (e && e.parameter && e.parameter.ping) {
+    return json_({ ok: true, sheet: SpreadsheetApp.getActiveSpreadsheet().getName() });
+  }
   const id = String((e && e.parameter && e.parameter.studentId) || '');
   if (!/^\d{5}$/.test(id)) return json_({ ok: false, error: 'invalid studentId' });
 
