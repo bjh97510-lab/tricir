@@ -26,15 +26,20 @@ function shuffle(list) {
   }
   return a;
 }
-const escapeHTML = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtTime = (sec) => (sec >= 60 ? `${Math.floor(sec / 60)}분 ${sec % 60}초` : `${sec}초`);
 
 /* =========================================================
    상태 & 저장
    ========================================================= */
 const LAST_ID_KEY = 'tricir:lastId';
+const LAST_SCHOOL_KEY = 'tricir:lastSchool';
 const PENDING_KEY = 'tricir:pending';
-const storeKey = (id) => `tricir:student:${id}`;
+// 학교가 다르면 같은 학번도 다른 학생 → 학교 + 학번으로 저장
+const storeKey = (school, id) => `tricir:student:${school}:${id}`;
+const legacyKey = (id) => `tricir:student:${id}`; // 학교 이름을 넣기 전 기록
+
+/** 학교 이름 정리: 띄어쓰기 · 특수문자 제거 ("숲속 중학교" = "숲속중학교") */
+const normalizeSchool = (s) => String(s).replace(/[<>"'`\\]/g, '').replace(/\s+/g, '').slice(0, 30);
 
 function readJSON(key, fallback) {
   try {
@@ -63,21 +68,22 @@ function pickProgress(src = {}) {
 }
 const progressValue = (p) => p.stampCount * CONFIG.ACORN_GOAL + p.acornCount;
 
-const state = { studentId: null, topic: 'trig', ...pickProgress() };
+const state = { school: '', studentId: null, topic: 'trig', ...pickProgress() };
 
 function save() {
-  writeJSON(storeKey(state.studentId), pickProgress(state));
+  writeJSON(storeKey(state.school, state.studentId), pickProgress(state));
 }
 
 /* =========================================================
    Google Apps Script 연동
    ========================================================= */
-async function fetchRemoteProgress(id) {
+async function fetchRemoteProgress(school, id) {
   if (!CONFIG.GAS_URL) return null;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 6000);
   try {
-    const res = await fetch(`${CONFIG.GAS_URL}?studentId=${encodeURIComponent(id)}`, { signal: ctrl.signal });
+    const query = `studentId=${encodeURIComponent(id)}&school=${encodeURIComponent(school)}`;
+    const res = await fetch(`${CONFIG.GAS_URL}?${query}`, { signal: ctrl.signal });
     const data = await res.json();
     if (!data.ok || !data.found) return null;
     return { ...data, badges: String(data.badges || '').split(',').filter(Boolean) };
@@ -558,6 +564,7 @@ function finishQuiz() {
   $('#r-badges').innerHTML = quiz.newBadges.map((id) => badgeItem(BADGES.find((b) => b.id === id), true)).join('');
 
   sendResult({
+    school: state.school,
     studentId: state.studentId,
     topic: TOPICS[topic].name,
     score: r.first,
@@ -596,12 +603,16 @@ function showPage(name) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-async function login(id) {
-  Object.assign(state, { studentId: id }, pickProgress(readJSON(storeKey(id), {})));
+async function login(school, id) {
+  const saved = readJSON(storeKey(school, id), null) ?? readJSON(legacyKey(id), {});
+  Object.assign(state, { school, studentId: id }, pickProgress(saved));
+  save();
   writeJSON(LAST_ID_KEY, id);
+  writeJSON(LAST_SCHOOL_KEY, school);
 
+  $('#id-school').textContent = school;
   $('#id-number').textContent = id;
-  $('#greet-id').textContent = `${id} 학생`;
+  $('#greet-id').textContent = `${school} ${id} 학생`;
   $('#login-view').hidden = true;
   $('#app-view').hidden = false;
   setSync('');
@@ -609,8 +620,8 @@ async function login(id) {
   showPage('topics');
 
   // 다른 기기에서 공부한 기록이 시트에 더 많이 있으면 그걸로 맞춰요.
-  const remote = await fetchRemoteProgress(id);
-  if (!remote || state.studentId !== id) return;
+  const remote = await fetchRemoteProgress(school, id);
+  if (!remote || state.studentId !== id || state.school !== school) return;
   const merged = new Set([...state.badges, ...pickProgress(remote).badges]);
   if (progressValue(pickProgress(remote)) > progressValue(state)) {
     const r = pickProgress(remote);
@@ -655,21 +666,31 @@ function init() {
   initCyclic();
 
   const lastId = readJSON(LAST_ID_KEY, '');
+  const lastSchool = readJSON(LAST_SCHOOL_KEY, '');
   if (lastId) $('#student-id').value = lastId;
+  if (lastSchool) $('#school-name').value = lastSchool;
 
   $('#student-id').addEventListener('input', (e) => {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 5);
     $('#login-error').textContent = '';
   });
+  $('#school-name').addEventListener('input', () => { $('#login-error').textContent = ''; });
 
   $('#login-form').addEventListener('submit', (e) => {
     e.preventDefault();
+    const school = normalizeSchool($('#school-name').value);
     const id = $('#student-id').value.trim();
-    if (!/^\d{5}$/.test(id)) {
-      $('#login-error').textContent = '학번 5자리를 숫자로 입력해 주세요. (예: 30101)';
+    if (school.length < 2) {
+      $('#login-error').textContent = '학교 이름을 입력해 주세요. (예: 숲속중학교)';
+      $('#school-name').focus();
       return;
     }
-    login(escapeHTML(id));
+    if (!/^\d{5}$/.test(id)) {
+      $('#login-error').textContent = '학번 5자리를 숫자로 입력해 주세요. (예: 30101)';
+      $('#student-id').focus();
+      return;
+    }
+    login(school, id);
   });
 
   document.addEventListener('click', (e) => {

@@ -118,8 +118,10 @@
     <div class="login-card">
       <svg class="login-squirrel" aria-hidden="true"><use href="#squirrel"/></svg>
       <h1>오늘의 수학 학습</h1>
-      <p class="login-sub">학번을 입력하고 숲속 교실에 들어가요!</p>
+      <p class="login-sub">학교와 학번을 입력하고 숲속 교실에 들어가요!</p>
       <form id="login-form" novalidate>
+        <label for="school-name">학교 이름</label>
+        <input id="school-name" class="school-input" maxlength="30" placeholder="예: 숲속중학교" autocomplete="organization" required>
         <label for="student-id">학번 (5자리)</label>
         <input id="student-id" inputmode="numeric" maxlength="5" placeholder="예: 30101" autocomplete="off" required>
         <p class="form-error" id="login-error" role="alert"></p>
@@ -133,6 +135,7 @@
     <header class="topbar">
       <div class="id-card">
         <span class="id-card-hole" aria-hidden="true"></span>
+        <span class="id-school" id="id-school"></span>
         <span class="id-label">학번</span>
         <strong id="id-number">-----</strong>
         <button id="logout-btn" class="link-btn" type="button">나가기</button>
