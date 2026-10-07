@@ -12,7 +12,7 @@ const TOPICS = {
   circle: {
     name: '원의 성질',
     title: '오늘의 원의 성질 학습',
-    conceptDesc: '원주각과 중심각, 접선과 현<br>드래그로 직접 확인',
+    conceptDesc: '원주각과 중심각, 접선과 현,<br>원의 접선의 길이를 드래그로 확인',
   },
 };
 
@@ -25,6 +25,7 @@ const CONCEPTS = {
   'circle-inscribed': { name: '같은 호에 대한 원주각', page: 'concept-circle', tip: '같은 호에 대한 원주각은 점의 위치와 상관없이 모두 같아요. 점 Q를 추가해서 비교해 보세요.' },
   'circle-semicircle': { name: '반원에 대한 원주각', page: 'concept-circle', tip: '지름에 대한 원주각은 항상 90°예요.' },
   'circle-tangent': { name: '접선과 현이 이루는 각', page: 'concept-circle', tip: '접선과 현이 이루는 각 = 그 각 안에 있는 호에 대한 원주각.' },
+  'circle-tangent-length': { name: '원의 접선의 길이', page: 'concept-circle', tip: '접선은 접점을 지나는 반지름과 수직이고, 원 밖의 한 점에서 그은 두 접선의 길이는 같아요. (PA = PB)' },
   'circle-cyclic': { name: '원에 내접하는 사각형', page: 'concept-circle', tip: '마주 보는 두 각의 합은 180°, 한 외각은 그 내각의 대각과 같아요.' },
   'circle-arc': { name: '원주각과 호의 길이', page: 'concept-circle', tip: '한 원에서 원주각의 크기는 호의 길이에 정비례해요.' },
   'trig-change': { name: '각의 크기에 따른 삼각비 변화', page: 'concept-trig', tip: '0°~90°에서 각이 커지면 sin·tan은 커지고 cos는 작아져요. 실험실에서 재생 버튼을 눌러 보세요.' },
@@ -51,6 +52,10 @@ const MISCONCEPTIONS = {
   'arc-ratio': { name: '호와 원주각 비례 혼동', msg: '원주각의 크기는 호의 길이에 정비례해요. 호가 3배면 원주각도 3배!' },
   'trend': { name: '증가·감소 혼동', msg: '0°~90°에서 각이 커지면 sin은 커지고 cos는 작아져요. 실험실 그래프를 떠올려 보세요.' },
   'tangent-radius': { name: '접선과 반지름 관계 혼동', msg: '원의 접선은 접점을 지나는 반지름과 항상 수직(90°)이에요.' },
+  'tangent-length': { name: '접선의 길이 혼동', msg: '원 밖의 한 점에서 그은 두 접선의 길이는 항상 같아요. PA = PB!' },
+  'tangent-quad': { name: '접선 사각형 각 혼동', msg: '접선은 반지름과 수직(90°)이니 사각형 OAPB에서 ∠APB + ∠AOB = 180°예요.' },
+  'circum-quad': { name: '외접사각형 성질 혼동', msg: '원에 외접하는 사각형은 마주 보는 두 변의 길이의 합이 같아요. AB + CD = AD + BC!' },
+  'area-half': { name: '넓이의 ½ 누락', msg: '삼각형의 넓이는 ½ × 밑변 × 높이예요. ½을 잊지 않았나요?' },
 };
 
 const BADGES = [
@@ -59,12 +64,13 @@ const BADGES = [
   { id: 'tangent-pro', icon: '📐', name: '접선 탐험가', desc: '접선과 현 문제 3개 연속 첫 시도 정답' },
   { id: 'perfect', icon: '💯', name: '만점 다람쥐', desc: '퀴즈 문제를 모두 첫 시도에 정답' },
   { id: 'independent', icon: '🌱', name: '스스로 해결', desc: '힌트 없이 퀴즈 완주 (70% 이상 정답)' },
-  { id: 'first-stamp', icon: '🏵️', name: '첫 칭찬 도장', desc: '도토리 10개로 첫 칭찬 도장 받기' },
+  { id: 'first-stamp', icon: '🏵️', name: '첫 칭찬 도장', desc: '도토리 15개로 첫 칭찬 도장 받기' },
   { id: 'explorer', icon: '🗺️', name: '숲속 탐험가', desc: '삼각비 · 원의 성질 퀴즈 모두 완주' },
+  { id: 'challenger', icon: '🔥', name: '도전왕', desc: '도전 심화 퀴즈에서 첫 시도 정답 5개 이상' },
 ];
 
 /* =========================================================
-   문제 은행 (단원별 하 · 중하 40문항 + 중상 10문항)
+   문제 은행 (단원별 하 · 중하 40~52문항 + 중상 10~13문항 + 도전 심화 8문항)
    wrong: [보기 HTML, 오답 유형]   hints: [1단계 개념, 2단계 수식]
    ========================================================= */
 const RC = '∠C = 90°인 직각삼각형 ABC에서';
@@ -373,6 +379,123 @@ function tangentCentralQ(t) {   // ∠ATU → ∠AOT
   };
 }
 
+/* ---------- 원의 접선의 길이 ---------- */
+/** 원 밖의 점 P(왼쪽)에서 그은 접선 그림. k = OP ÷ 반지름 */
+function outerFig(k, extra = {}) {
+  return { type: 'circle', outer: { name: 'P', deg: 180, k: Math.min(2.4, Math.max(1.5, k)) }, ...extra };
+}
+/** ∠APO = t 가 되는 k (sin t = OA / OP) */
+const kFromAngle = (t) => 1 / Math.sin(toRad(t));
+const BOTH_RIGHT = [['A', 'O', 'P'], ['B', 'O', 'P']];
+/** 접선 하나(PA)만 그리는 outer 설정 */
+const oneTangent = (k) => ({ name: 'P', deg: 180, k: Math.min(2.4, Math.max(1.5, k)), touch: ['A'] });
+
+function tanLenQ(len) {   // PA = PB
+  return {
+    concept: 'circle-tangent-length', level: '하',
+    q: `원 O 밖의 점 P에서 원에 그은 두 접선의 접점을 A, B라 할 때, PA = ${len}이면 PB의 길이는?`,
+    fig: outerFig(1.95, { segs: ['OA', 'OB'], rights: BOTH_RIGHT, segLabels: [{ seg: 'PA', text: String(len) }, { seg: 'PB', text: '?' }] }),
+    answer: String(len), wrong: [[String(len / 2), 'tangent-length'], [String(len * 2), 'tangent-length'], [`${len}√2`, 'calc']],
+    hints: ['원 밖의 한 점에서 원에 그은 두 접선의 길이를 비교해 보세요. 드래그 도구에서 PA와 PB를 확인!', '직각삼각형 OAP와 OBP는 합동 (OA = OB, OP는 공통) → PA = PB'],
+    explain: `두 접선의 길이는 같으므로 PB = PA = ${len}`,
+  };
+}
+function tanRightQ(t) {   // ∠APO → ∠AOP
+  return {
+    concept: 'circle-tangent-length', level: '중하',
+    q: `점 P에서 원 O에 그은 접선의 접점을 A라 하고 ∠APO = ${t}°일 때, ∠AOP의 크기는?`,
+    fig: outerFig(1, { outer: oneTangent(kFromAngle(t)), segs: ['OA', 'OP'], rights: [['A', 'O', 'P']],
+      angles: [{ v: 'P', a: 'A', b: 'O', text: D(t) }, { v: 'O', a: 'A', b: 'P', text: '?' }] }),
+    ...degChoices(90 - t, [[t, 'calc'], [180 - t, 'tangent-radius'], [2 * t, 'tangent-double']]),
+    hints: ['접선 PA와 반지름 OA가 이루는 각은 몇 도일까요?', `∠OAP = 90° → ∠AOP = 180° − 90° − ${t}°`],
+    explain: `접선 ⊥ 반지름이므로 ∠OAP = 90°, ∠AOP = 90° − ${t}° = ${D(90 - t)}`,
+  };
+}
+function tanQuadQ(t) {   // ∠APB → ∠AOB
+  return {
+    concept: 'circle-tangent-length', level: '중하',
+    q: `점 P에서 원 O에 그은 두 접선의 접점을 A, B라 하고 ∠APB = ${t}°일 때, ∠AOB의 크기는?`,
+    fig: outerFig(kFromAngle(t / 2), { segs: ['OA', 'OB'], rights: BOTH_RIGHT, angles: [{ v: 'P', a: 'A', b: 'B', text: D(t) }, { v: 'O', a: 'A', b: 'B', text: '?' }] }),
+    ...degChoices(180 - t, [[t, 'tangent-quad'], [t / 2, 'half-double-swap'], [360 - t, 'calc']]),
+    hints: ['사각형 OAPB의 네 각의 합은 360°예요. ∠OAP와 ∠OBP는 몇 도?', `∠AOB = 360° − 90° − 90° − ${t}°`],
+    explain: `∠OAP = ∠OBP = 90° → ∠AOB = 180° − ${t}° = ${D(180 - t)}`,
+  };
+}
+function tanQuadRevQ(c) {   // ∠AOB → ∠APB
+  return {
+    concept: 'circle-tangent-length', level: '중하',
+    q: `점 P에서 원 O에 그은 두 접선의 접점을 A, B라 하고 ∠AOB = ${c}°일 때, ∠APB의 크기는?`,
+    fig: outerFig(kFromAngle((180 - c) / 2), { segs: ['OA', 'OB'], rights: BOTH_RIGHT, angles: [{ v: 'O', a: 'A', b: 'B', text: D(c) }, { v: 'P', a: 'A', b: 'B', text: '?' }] }),
+    ...degChoices(180 - c, [[c, 'tangent-quad'], [c / 2, 'half-double-swap'], [360 - c, 'calc']]),
+    hints: ['접선 ⊥ 반지름! 사각형 OAPB에서 ∠OAP = ∠OBP = 90°예요.', `∠APB = 360° − 90° − 90° − ${c}°`],
+    explain: `∠APB = 180° − ${c}° = ${D(180 - c)}`,
+  };
+}
+function tanIsoQ(t) {   // PA = PB → 이등변삼각형
+  return {
+    concept: 'circle-tangent-length', level: '중하',
+    q: `점 P에서 원 O에 그은 두 접선의 접점을 A, B라 하고 ∠APB = ${t}°일 때, ∠PAB의 크기는?`,
+    fig: outerFig(kFromAngle(t / 2), { segs: ['AB'], angles: [{ v: 'P', a: 'A', b: 'B', text: D(t) }, { v: 'A', a: 'P', b: 'B', text: '?' }] }),
+    ...degChoices((180 - t) / 2, [[t, 'calc'], [180 - t, 'tangent-quad'], [90 - t, 'calc']]),
+    hints: ['PA = PB이므로 삼각형 PAB는 이등변삼각형이에요.', `∠PAB = (180° − ${t}°) ÷ 2`],
+    explain: `PA = PB → ∠PAB = ∠PBA = (180° − ${t}°) ÷ 2 = ${D((180 - t) / 2)}`,
+  };
+}
+/** 원에 외접하는 사각형 ABCD (A 왼쪽 위 → B 왼쪽 아래 → C 오른쪽 아래 → D 오른쪽 위) */
+function circumQuadFig(sides) {
+  return {
+    type: 'circle', circum: { at: [100, 215, 300, 15], names: ['A', 'B', 'C', 'D'] },
+    segLabels: Object.entries(sides).map(([seg, text]) => ({ seg, text })),
+  };
+}
+
+const TANGENT_LENGTH_QUESTIONS = [
+  ...[5, 6, 8].map(tanLenQ),
+  ...[35, 25].map(tanRightQ),
+  ...[60, 50].map(tanQuadQ),
+  tanQuadRevQ(110),
+  ...[40, 50].map(tanIsoQ),
+  {
+    concept: 'circle-tangent-length', level: '중하', q: '점 P에서 원 O에 그은 접선의 접점을 A라 하자. OA = 3, PA = 4일 때, OP의 길이는?',
+    fig: outerFig(1, { outer: oneTangent(5 / 3), segs: ['OA', 'OP'], rights: [['A', 'O', 'P']],
+      segLabels: [{ seg: 'OA', text: '3' }, { seg: 'PA', text: '4' }, { seg: 'OP', text: '?' }] }),
+    answer: '5', wrong: [['7', 'calc'], ['√7', 'calc'], ['1', 'calc']],
+    hints: ['접선 ⊥ 반지름이니 삼각형 OAP는 ∠A = 90°인 직각삼각형이에요.', 'OP² = OA² + PA² (피타고라스 정리)'],
+    explain: 'OP = √(3² + 4²) = √25 = 5',
+  },
+  {
+    concept: 'circle-tangent-length', level: '중하', q: '점 P에서 원 O에 그은 접선의 접점을 A라 하자. OA = 5, OP = 13일 때, PA의 길이는?',
+    fig: outerFig(1, { outer: oneTangent(2.4), segs: ['OA', 'OP'], rights: [['A', 'O', 'P']],
+      segLabels: [{ seg: 'OA', text: '5' }, { seg: 'OP', text: '13' }, { seg: 'PA', text: '?' }] }),
+    answer: '12', wrong: [['8', 'calc'], ['18', 'calc'], ['√194', 'tangent-radius']],
+    hints: ['삼각형 OAP는 ∠A = 90°인 직각삼각형이에요. 빗변은 OP!', 'PA² = OP² − OA²'],
+    explain: 'PA = √(13² − 5²) = √144 = 12',
+  },
+  // 중상
+  {
+    concept: 'circle-tangent-length', level: '중상', q: '원 O에 외접하는 사각형 ABCD에서 AB = 7, BC = 8, CD = 5일 때, AD의 길이는?',
+    fig: circumQuadFig({ AB: '7', BC: '8', CD: '5', DA: '?' }),
+    answer: '4', wrong: [['6', 'circum-quad'], ['10', 'calc'], ['5', 'circum-quad']],
+    hints: ['원에 외접하는 사각형에서 마주 보는 두 변의 길이의 합은 같아요.', 'AB + CD = AD + BC → 7 + 5 = AD + 8'],
+    explain: 'AB + CD = AD + BC → 12 = AD + 8 → AD = 4',
+  },
+  {
+    concept: 'circle-tangent-length', level: '중상', q: '점 P에서 원 O에 그은 접선의 접점을 A라 하자. PA = 6, ∠APO = 30°일 때, 원 O의 반지름의 길이는?',
+    fig: outerFig(1, { outer: oneTangent(2), segs: ['OA', 'OP'], rights: [['A', 'O', 'P']],
+      segLabels: [{ seg: 'PA', text: '6' }, { seg: 'OA', text: '?' }], angles: [{ v: 'P', a: 'A', b: 'O', text: '30°' }] }),
+    answer: '2√3', wrong: [['6√3', 'special-30-60'], ['3', 'sin-cos-swap'], ['3√3', 'calc']],
+    hints: ['∠OAP = 90°인 직각삼각형 OAP에서 삼각비를 써요.', `tan 30° = ${fr('OA', 'PA')} = ${fr('OA', 6)}`],
+    explain: `OA = 6 × tan 30° = 6 × ${fr('√3', 3)} = 2√3`,
+  },
+  {
+    concept: 'circle-tangent-length', level: '중상', q: '원 O의 반지름이 5이고 OP = 13일 때, 점 P에서 원 O에 그은 두 접선의 길이의 합 PA + PB는?',
+    fig: outerFig(2.4, { segs: ['OA', 'OB', 'OP'], rights: BOTH_RIGHT, segLabels: [{ seg: 'OA', text: '5' }, { seg: 'OP', text: '13' }] }),
+    answer: '24', wrong: [['12', 'tangent-length'], ['18', 'calc'], ['26', 'calc']],
+    hints: ['직각삼각형 OAP에서 PA를 먼저 구해요.', 'PA = √(13² − 5²), 그리고 PB = PA'],
+    explain: 'PA = √(169 − 25) = 12, PB = PA = 12 → PA + PB = 24',
+  },
+];
+
 function cyclicQ(a) {   // 내접사각형의 대각
   return {
     concept: 'circle-cyclic', level: '하', q: `사각형 ABCD가 원에 내접하고 ∠A = ${a}°일 때, ∠C의 크기는?`,
@@ -426,6 +549,9 @@ const CIRCLE_QUESTIONS = [
     hints: ['접선은 원과 한 점에서만 만나요. 반지름과 어떤 관계일까요?', '접선 ⊥ 반지름 (개념 정리 2번 그림의 점선 OT)'],
     explain: '원의 접선은 접점을 지나는 반지름과 수직이므로 90°',
   },
+
+  // 원의 접선의 길이 (12 + 중상 3)
+  ...TANGENT_LENGTH_QUESTIONS,
 
   // 원에 내접하는 사각형 (6)
   ...[70, 85, 100, 115].map(cyclicQ),
@@ -599,7 +725,147 @@ const CIRCLE_ADVANCED = [
   },
 ];
 
-const QUESTION_BANK = { trig: [...TRIG_QUESTIONS, ...TRIG_ADVANCED], circle: [...CIRCLE_QUESTIONS, ...CIRCLE_ADVANCED] };
+/* =========================================================
+   도전 심화 문제 (단원별 8문항, 세 단계 이상 풀이 · 첫 시도 정답 시 도토리 2개)
+   ========================================================= */
+const TRIG_CHALLENGE = [
+  {
+    concept: 'trig-def', level: '심화', q: `0° &lt; A &lt; 90°이고 sin A = ${fr(3, 5)}일 때, tan A + cos A의 값은?`,
+    answer: fr(31, 20), wrong: [[fr(7, 5), 'ratio-mix'], [fr(27, 20), 'calc'], [fr(31, 15), 'calc']],
+    hints: ['빗변 5, 높이 3인 직각삼각형을 그리고 밑변을 구해요.', `밑변 = 4 → tan A = ${fr(3, 4)}, cos A = ${fr(4, 5)}`],
+    explain: `${fr(3, 4)} + ${fr(4, 5)} = ${fr(15, 20)} + ${fr(16, 20)} = ${fr(31, 20)}`,
+  },
+  {
+    concept: 'trig-apply', level: '심화', q: `${RC} ∠A = 30°, AB = 10일 때, 삼각형 ABC의 넓이는?`,
+    fig: { type: 'tri', theta: 30, labels: { hyp: '10' }, angleText: '30°' },
+    answer: fr('25√3', 2), wrong: [['25√3', 'area-half'], [fr(25, 2), 'sin-cos-swap'], ['50', 'calc']],
+    hints: ['BC = AB × sin 30°, AC = AB × cos 30° 으로 두 변을 먼저 구해요.', 'BC = 5, AC = 5√3 → 넓이 = ½ × BC × AC'],
+    explain: `BC = 5, AC = 5√3 → 넓이 = ½ × 5 × 5√3 = ${fr('25√3', 2)}`,
+  },
+  {
+    concept: 'trig-def', level: '심화', q: '0° &lt; A &lt; 90°이고 tan A = 2일 때, sin A × cos A의 값은?',
+    answer: fr(2, 5), wrong: [[fr(1, 5), 'calc'], [fr(2, '√5'), 'ratio-mix'], ['2', 'calc']],
+    hints: ['높이 2, 밑변 1인 직각삼각형의 빗변을 구해요.', `빗변 = √5 → sin A = ${fr(2, '√5')}, cos A = ${fr(1, '√5')}`],
+    explain: `${fr(2, '√5')} × ${fr(1, '√5')} = ${fr(2, 5)}`,
+  },
+  {
+    concept: 'trig-special', level: '심화', q: '(sin 30° + cos 45°)(sin 30° − cos 45°)의 값은?',
+    answer: `−${fr(1, 4)}`, wrong: [[fr(1, 4), 'calc'], ['0', 'special-45'], [`−${fr(3, 4)}`, 'calc']],
+    hints: ['(a + b)(a − b) = a² − b² 을 이용해요.', `sin²30° − cos²45° = (${fr(1, 2)})² − (${fr('√2', 2)})²`],
+    explain: `${fr(1, 4)} − ${fr(2, 4)} = −${fr(1, 4)}`,
+  },
+  {
+    concept: 'trig-special', level: '심화', q: '0° &lt; A &lt; 90°이고 sin A : cos A = 1 : √3일 때, ∠A의 크기는?',
+    ...degChoices(30, [[60, 'special-30-60'], [45, 'special-45'], [15, 'calc']]),
+    hints: [`${fr('sin A', 'cos A')} = tan A 예요. 비를 분수로 바꿔 보세요.`, `tan A = ${fr(1, '√3')} = ${fr('√3', 3)}`],
+    explain: `tan A = ${fr('√3', 3)} 이므로 ∠A = 30°`,
+  },
+  {
+    concept: 'trig-apply', level: '심화', q: '삼각형 ABC에서 AB = 6, AC = 8, ∠A = 60°일 때, 삼각형 ABC의 넓이는?',
+    answer: '12√3', wrong: [['24√3', 'area-half'], ['12', 'sin-cos-swap'], ['24', 'calc']],
+    hints: ['꼭짓점 C에서 변 AB에 수선을 내려 높이를 삼각비로 구해요.', `높이 = AC × sin 60° = 8 × ${fr('√3', 2)} = 4√3`],
+    explain: '높이 = 4√3 → 넓이 = ½ × 6 × 4√3 = 12√3',
+  },
+  {
+    concept: 'trig-apply', level: '심화', q: `${RC} ∠A = 30°, AC = 2√3일 때, AB의 길이는?`,
+    fig: { type: 'tri', theta: 30, labels: { adj: '2√3', hyp: '?' }, angleText: '30°' },
+    answer: '4', wrong: [['√3', 'sin-cos-swap'], ['6', 'calc'], ['4√3', 'ratio-mix']],
+    hints: ['AC는 밑변, AB는 빗변이에요. cos 30° = AC ÷ AB 로 식을 세워요.', `${fr('√3', 2)} = ${fr('2√3', 'AB')} → AB = ?`],
+    explain: `AB = 2√3 ÷ ${fr('√3', 2)} = 2√3 × ${fr(2, '√3')} = 4`,
+  },
+  {
+    concept: 'trig-change', level: '심화', q: '45° &lt; x &lt; 90°일 때, sin x, cos x, tan x의 크기를 작은 것부터 바르게 나열한 것은?',
+    answer: 'cos x &lt; sin x &lt; tan x',
+    wrong: [['sin x &lt; cos x &lt; tan x', 'trend'], ['cos x &lt; tan x &lt; sin x', 'trend'], ['tan x &lt; cos x &lt; sin x', 'trend']],
+    hints: ['45°에서 sin x = cos x, tan x = 1이에요. 그보다 큰 각에서는 어떻게 될까요?', '45°를 넘으면 sin x가 cos x보다 커지고, tan x는 1보다 커져요. sin x는 항상 1보다 작아요!'],
+    explain: '예) x = 60°: cos 60° = 0.5 &lt; sin 60° ≈ 0.87 &lt; tan 60° ≈ 1.73',
+  },
+];
+
+const CIRCLE_CHALLENGE = [
+  {
+    concept: 'circle-central', level: '심화', q: '원 O에서 ∠ABO = 20°, ∠ACO = 30°일 때, ∠BOC의 크기는?',
+    fig: { type: 'circle', pts: { A: 90, B: 230, C: 330 }, segs: ['OA', 'OB', 'OC', 'AB', 'AC'],
+      angles: [{ v: 'B', a: 'A', b: 'O', text: '20°' }, { v: 'C', a: 'A', b: 'O', text: '30°' }, { v: 'O', a: 'B', b: 'C', text: '?' }] },
+    ...degChoices(100, [[50, 'inscribed-no-double'], [25, 'half-double-swap'], [140, 'calc']]),
+    hints: ['OA = OB = OC(반지름)이니 삼각형 OAB, OAC는 이등변삼각형이에요. ∠BAC부터 구해요.', '∠BAC = 20° + 30° = 50° → ∠BOC는 호 BC에 대한 중심각'],
+    explain: '∠BAC = ∠OAB + ∠OAC = 50° → ∠BOC = 2 × 50° = 100°',
+  },
+  {
+    concept: 'circle-inscribed', level: '심화', q: '원의 두 현 AB, CD가 원 안의 점 P에서 만나고 ∠ACD = 35°, ∠BDC = 40°일 때, ∠APC의 크기는?',
+    fig: { type: 'circle', center: false, pts: { A: 110, B: 290, C: 210, D: 40 }, inner: { P: ['AB', 'CD'] }, segs: ['AB', 'CD', 'AC', 'BD'],
+      angles: [{ v: 'C', a: 'A', b: 'D', text: '35°' }, { v: 'D', a: 'B', b: 'C', text: '40°' }, { v: 'P', a: 'A', b: 'C', text: '?', r: 18, textR: 34 }] },
+    ...degChoices(75, [[105, 'calc'], [37.5, 'half-double-swap'], [150, 'inscribed-no-double']]),
+    hints: ['삼각형 PCD에서 ∠PCD = 35°, ∠PDC = 40°예요. ∠CPD부터 구해요.', '∠CPD = 180° − 35° − 40° = 105°, ∠APC와 ∠CPD는 일직선 위의 각'],
+    explain: '∠CPD = 105° → ∠APC = 180° − 105° = 75° (= 35° + 40°)',
+  },
+  {
+    concept: 'circle-tangent-length', level: '심화', q: '점 P에서 원 O에 그은 두 접선의 접점을 A, B라 하고 ∠APB = 50°일 때, 큰 호 AB 위의 점 C에 대해 ∠ACB의 크기는?',
+    fig: outerFig(kFromAngle(25), { pts: { C: 0 }, segs: ['OA', 'OB', 'CA', 'CB'], rights: BOTH_RIGHT,
+      angles: [{ v: 'P', a: 'A', b: 'B', text: '50°' }, { v: 'C', a: 'A', b: 'B', text: '?' }] }),
+    ...degChoices(65, [[130, 'central-no-half'], [50, 'tangent-double'], [25, 'half-double-swap']]),
+    hints: ['사각형 OAPB에서 ∠AOB부터 구해요. 접선 ⊥ 반지름!', '∠AOB = 180° − 50° = 130°, ∠ACB는 호 AB에 대한 원주각'],
+    explain: '∠AOB = 130° → ∠ACB = ½ × 130° = 65°',
+  },
+  {
+    concept: 'circle-tangent-length', level: '심화', q: '원 O에 외접하는 사각형 ABCD의 둘레가 32이고 AB = 7, AD = 6일 때, BC의 길이는?',
+    fig: circumQuadFig({ AB: '7', DA: '6', BC: '?' }),
+    answer: '10', wrong: [['9', 'calc'], ['12', 'circum-quad'], ['8', 'calc']],
+    hints: ['외접사각형은 AB + CD = AD + BC 예요. 둘레는 이 두 합을 더한 것!', '둘레 32 = 2 × (AD + BC) → AD + BC = 16'],
+    explain: 'AD + BC = 32 ÷ 2 = 16 → BC = 16 − 6 = 10',
+  },
+  {
+    concept: 'circle-tangent-length', level: '심화', q: '삼각형 ABC의 내접원이 세 변 BC, CA, AB와 각각 점 D, E, F에서 접한다. AB = 9, BC = 10, CA = 7일 때, AF의 길이는?',
+    fig: { type: 'circle', r: 55, cy: 150, circum: { at: [265, 25, 150], names: ['C', 'A', 'B'], touch: ['D', 'E', 'F'] },
+      segLabels: [{ seg: 'AB', text: '9' }, { seg: 'BC', text: '10' }, { seg: 'CA', text: '7' }] },
+    answer: '3', wrong: [['4', 'calc'], ['4.5', 'tangent-length'], ['2', 'calc']],
+    hints: ['한 점에서 그은 두 접선의 길이는 같아요: AF = AE, BF = BD, CD = CE', 'AF = x라 하면 BD = BF = 9 − x, CD = CE = 7 − x, BD + CD = 10'],
+    explain: '(9 − x) + (7 − x) = 10 → 2x = 6 → x = 3',
+  },
+  {
+    concept: 'circle-tangent', level: '심화', q: '직선 SU가 점 T에서 원에 접하고 ∠ATU = 70°, PT = PA일 때, ∠PAT의 크기는?',
+    fig: { type: 'circle', center: false, pts: tangentPts(70), tangent: { at: 'T', ends: ['U', 'S'] }, segs: ['TA', 'PA', 'PT'], highlight: { from: 'T', to: 'A' },
+      angles: [{ v: 'T', a: 'U', b: 'A', text: '70°' }, { v: 'A', a: 'P', b: 'T', text: '?' }] },
+    ...degChoices(55, [[70, 'calc'], [35, 'half-double-swap'], [110, 'opposite-arc']]),
+    hints: ['접선과 현이 이루는 각으로 ∠TPA부터 구해요.', '∠TPA = ∠ATU = 70°, PT = PA이니 삼각형 PTA는 이등변삼각형'],
+    explain: '∠TPA = 70° → ∠PAT = (180° − 70°) ÷ 2 = 55°',
+  },
+  {
+    concept: 'circle-tangent', level: '심화', q: '선분 AB가 원 O의 지름이고 직선 AP가 점 A에서 원에 접한다. 원 위의 점 C에 대해 ∠PAC = 35°일 때, ∠CAB의 크기는?',
+    fig: { type: 'circle', pts: { A: 180, B: 0, C: 110 }, tangent: { at: 'A', ends: ['Q', 'P'], len: 92 }, segs: ['AB', 'AC', 'BC'],
+      angles: [{ v: 'A', a: 'P', b: 'C', text: '35°' }, { v: 'A', a: 'C', b: 'B', text: '?', r: 34, textR: 54 }] },
+    ...degChoices(55, [[35, 'calc'], [70, 'tangent-double'], [45, 'calc']]),
+    hints: ['접선 AP와 접점을 지나는 지름 AB는 수직이에요. ∠PAB = 90°!', '∠CAB = 90° − 35°'],
+    explain: '접선 ⊥ 지름이므로 ∠PAB = 90° → ∠CAB = 90° − 35° = 55°',
+  },
+  {
+    concept: 'circle-cyclic', level: '심화', q: '사각형 ABCD가 원에 내접하고 ∠ABD = 30°, ∠DBC = 45°일 때, ∠ADC의 크기는?',
+    fig: { type: 'circle', center: false, pts: { A: 120, B: 220, C: 330, D: 60 }, segs: ['AB', 'BC', 'CD', 'DA', 'BD'],
+      angles: [{ v: 'B', a: 'A', b: 'D', text: '30°' }, { v: 'B', a: 'D', b: 'C', text: '45°', r: 36, textR: 56 }, { v: 'D', a: 'A', b: 'C', text: '?' }] },
+    ...degChoices(105, [[75, 'cyclic-equal'], [150, 'inscribed-no-double'], [52.5, 'half-double-swap']]),
+    hints: ['∠ABC = ∠ABD + ∠DBC 로 ∠B를 먼저 구해요.', '∠ABC = 75°, 내접사각형에서 ∠B + ∠D = 180°'],
+    explain: '∠ABC = 75° → ∠ADC = 180° − 75° = 105°',
+  },
+];
+
+/** 문제마다 변하지 않는 짧은 ID — 도토리를 이미 받은 문제를 기억할 때 써요 (문제가 추가돼도 기존 ID는 그대로) */
+function withIds(topic, list) {
+  const seen = new Set();
+  return list.map((q) => {
+    const s = `${q.concept}|${q.q}|${q.answer}`;
+    let h = 7;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0;
+    let id = `${topic[0]}${h.toString(36)}`;
+    while (seen.has(id)) id += '_';
+    seen.add(id);
+    return { ...q, id };
+  });
+}
+
+const QUESTION_BANK = {
+  trig: withIds('trig', [...TRIG_QUESTIONS, ...TRIG_ADVANCED, ...TRIG_CHALLENGE]),
+  circle: withIds('circle', [...CIRCLE_QUESTIONS, ...CIRCLE_ADVANCED, ...CIRCLE_CHALLENGE]),
+};
 
 function figureSVG(fig) {
   if (!fig) return '';

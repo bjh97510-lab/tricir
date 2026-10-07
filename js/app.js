@@ -7,9 +7,11 @@
    ========================================================= */
 const CONFIG = {
   GAS_URL: 'https://script.google.com/macros/s/AKfycbxn-HjrvJr45oHxhshg2MdQE_CmKVCgjzma-VDgfEILJOCl4pXh1bQIwGJRZ74pk1uZ6A/exec',
-  ACORN_GOAL: 10,
-  QUIZ_BASIC: 20,      // 한 번에 낼 하 · 중하 문항 수
-  QUIZ_ADVANCED: 10,   // 한 번에 낼 중상 문항 수
+  ACORN_GOAL: 15,          // 도토리 15개 = 칭찬 도장 1개
+  QUIZ_BASIC: 20,          // 한 번에 낼 하 · 중하 문항 수
+  QUIZ_ADVANCED: 10,       // 한 번에 낼 중상 문항 수
+  QUIZ_CHALLENGE: 8,       // 도전 심화 퀴즈 문항 수
+  CHALLENGE_ACORNS: 2,     // 심화 문제 첫 시도 정답 시 도토리 개수
   IMG: {
     acorn: 'assets/acorn.svg',
     stamp: 'assets/stamp.svg',
@@ -17,6 +19,7 @@ const CONFIG = {
 };
 
 const INSCRIBED_CONCEPTS = ['circle-central', 'circle-inscribed', 'circle-semicircle', 'circle-arc'];
+const TANGENT_CONCEPTS = ['circle-tangent', 'circle-tangent-length'];
 
 function shuffle(list) {
   const a = [...list];
@@ -63,9 +66,13 @@ function pickProgress(src = {}) {
     badges: Array.isArray(src.badges) ? src.badges.filter((id) => BADGES.some((b) => b.id === id)) : [],
     counters: { specialStreak: n(c.specialStreak), tangentStreak: n(c.tangentStreak), inscribedTotal: n(c.inscribedTotal) },
     best: { trig: src.best?.trig ?? null, circle: src.best?.circle ?? null },
+    bestChallenge: { trig: src.bestChallenge?.trig ?? null, circle: src.bestChallenge?.circle ?? null },
     done: { trig: !!src.done?.trig, circle: !!src.done?.circle },
+    // 첫 시도에 맞혀 도토리를 받은 문제 ID — 같은 문제로는 도토리를 다시 주지 않아요
+    solved: Array.isArray(src.solved) ? [...new Set(src.solved.filter((id) => typeof id === 'string' && id))] : [],
   };
 }
+const parseSolved = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map((x) => String(x).trim()).filter(Boolean);
 const progressValue = (p) => p.stampCount * CONFIG.ACORN_GOAL + p.acornCount;
 
 const state = { school: '', studentId: null, topic: 'trig', ...pickProgress() };
@@ -86,7 +93,7 @@ async function fetchRemoteProgress(school, id) {
     const res = await fetch(`${CONFIG.GAS_URL}?${query}`, { signal: ctrl.signal });
     const data = await res.json();
     if (!data.ok || !data.found) return null;
-    return { ...data, badges: String(data.badges || '').split(',').filter(Boolean) };
+    return { ...data, badges: String(data.badges || '').split(',').filter(Boolean), solved: parseSolved(data.solved) };
   } catch {
     return null;
   } finally {
@@ -186,21 +193,23 @@ function flyAcorn(fromEl, toEl) {
   return anim.finished.then(() => img.remove(), () => img.remove());
 }
 
-/** 첫 시도 정답 → 도토리 +1, 10개가 모이면 칭찬 도장으로 교환 */
-function addAcorn(fromEl) {
-  const target = $$('.acorn-slot')[state.acornCount];
-
-  state.acornCount += 1;
-  state.totalCorrect += 1;
+/** 도토리 +n (심화 문제는 2개). ACORN_GOAL개가 모이면 칭찬 도장으로 교환 */
+function addAcorns(fromEl, n = 1) {
+  const targets = [];
   let earnedStamp = false;
-  if (state.acornCount >= CONFIG.ACORN_GOAL) {
-    state.acornCount = 0;
-    state.stampCount += 1;
-    earnedStamp = true;
+  for (let i = 0; i < n; i++) {
+    targets.push($$('.acorn-slot')[state.acornCount]);
+    state.acornCount += 1;
+    if (state.acornCount >= CONFIG.ACORN_GOAL) {
+      state.acornCount = 0;
+      state.stampCount += 1;
+      earnedStamp = true;
+    }
   }
   save();
 
-  flyAcorn(fromEl, target).then(() => {
+  const flights = targets.map((t, i) => new Promise((done) => setTimeout(() => flyAcorn(fromEl, t).then(done), i * 170)));
+  Promise.all(flights).then(() => {
     bump($('#acorn-counter'));
     if (earnedStamp) {
       paintAcorns(CONFIG.ACORN_GOAL);
@@ -282,21 +291,33 @@ function renderTopicHome() {
   const t = TOPICS[state.topic];
   $('#topic-home-title').textContent = t.name;
   $('#concept-desc').innerHTML = t.conceptDesc;
+  const best = state.bestChallenge[state.topic];
+  $('#meta-challenge').textContent = best == null ? '아직 도전 기록이 없어요' : `최고 기록 ${best} / ${CONFIG.QUIZ_CHALLENGE}문제`;
 }
 
 /* =========================================================
    퀴즈: 단계별 힌트 + 오답 유형 피드백
    ========================================================= */
-const quiz = { topic: 'trig', items: [], index: 0, results: [], cur: null, startedAt: 0, timer: 0, newBadges: [] };
+const quiz = { topic: 'trig', mode: 'normal', items: [], index: 0, results: [], cur: null, startedAt: 0, timer: 0, newBadges: [], acorns: 0 };
 
-function startQuiz() {
+const isSolved = (q) => state.solved.includes(q.id);
+const acornsFor = (q) => (q.level === '심화' ? CONFIG.CHALLENGE_ACORNS : 1);
+
+/** mode: 'normal'(하·중하 + 중상) | 'challenge'(도전 심화만) */
+function startQuiz(mode = 'normal') {
   quiz.topic = state.topic;
+  quiz.mode = mode;
   const bank = QUESTION_BANK[quiz.topic];
-  const LEVEL_ORDER = { 하: 0, 중하: 1, 중상: 2 };
-  quiz.items = [
-    ...shuffle(bank.filter((q) => q.level !== '중상')).slice(0, CONFIG.QUIZ_BASIC),
-    ...shuffle(bank.filter((q) => q.level === '중상')).slice(0, CONFIG.QUIZ_ADVANCED),
-  ]
+  const LEVEL_ORDER = { 하: 0, 중하: 1, 중상: 2, 심화: 3 };
+  // 아직 도토리를 못 받은 문제를 먼저 뽑고, 모자라면 전에 맞힌 문제로 채워요
+  const pick = (list, n) => [...shuffle(list.filter((q) => !isSolved(q))), ...shuffle(list.filter(isSolved))].slice(0, n);
+  const chosen = mode === 'challenge'
+    ? pick(bank.filter((q) => q.level === '심화'), CONFIG.QUIZ_CHALLENGE)
+    : [
+      ...pick(bank.filter((q) => q.level === '하' || q.level === '중하'), CONFIG.QUIZ_BASIC),
+      ...pick(bank.filter((q) => q.level === '중상'), CONFIG.QUIZ_ADVANCED),
+    ];
+  quiz.items = chosen
     .sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) // 쉬운 문제부터
     .map((q) => ({
       ...q,
@@ -305,12 +326,14 @@ function startQuiz() {
   quiz.index = 0;
   quiz.results = [];
   quiz.newBadges = [];
+  quiz.acorns = 0;
   quiz.startedAt = Date.now();
   clearInterval(quiz.timer);
   quiz.timer = setInterval(updateTimer, 1000);
   updateTimer();
 
-  $('#quiz-title').textContent = `${TOPICS[quiz.topic].name} 퀴즈`;
+  $('#quiz-title').textContent = `${TOPICS[quiz.topic].name} ${mode === 'challenge' ? '도전 심화' : '퀴즈'}`;
+  $('#quiz-box').classList.toggle('challenge', mode === 'challenge');
   $('#quiz-result').hidden = true;
   $('#quiz-box').hidden = false;
   renderQuestion();
@@ -333,7 +356,9 @@ function renderQuestion() {
   $('#quiz-progress-text').textContent = `${quiz.index + 1} / ${total}`;
   $('#quiz-progress-fill').style.width = `${(quiz.index / total) * 100}%`;
   $('#quiz-score').textContent = firstCount();
-  $('#q-concept').textContent = `난이도 ${q.level} · ${CONCEPTS[q.concept].name}`;
+  $('#q-concept').textContent = `${q.level === '심화' ? '🔥 도전 심화' : `난이도 ${q.level}`} · ${CONCEPTS[q.concept].name}`;
+  $('#q-concept').classList.toggle('chip-challenge', q.level === '심화');
+  $('#q-solved').hidden = !isSolved(q);
   $('#q-text').innerHTML = q.q;
 
   const fig = $('#q-figure');
@@ -393,12 +418,21 @@ function choose(btn, choice) {
   if (choice.correct) {
     btn.classList.add('correct');
     const first = cur.attempts === 0;
+    const already = isSolved(q);
     finishQuestion(first ? 'first' : 'later');
-    if (first) addAcorn(btn);
     fb.className = 'feedback ok';
-    fb.innerHTML = first
-      ? `<strong>정답! 도토리 +1 🌰</strong><span class="explain">${q.explain}</span>`
-      : `<strong>정답! 힌트를 따라 해결했어요 👏</strong><span class="explain">${q.explain}</span><small>첫 시도에 맞히면 도토리를 받을 수 있어요.</small>`;
+    if (first && !already) {
+      const n = acornsFor(q);
+      state.solved.push(q.id);
+      state.totalCorrect += 1;
+      quiz.acorns += n;
+      addAcorns(btn, n);
+      fb.innerHTML = `<strong>정답! 도토리 +${n} ${'🌰'.repeat(n)}</strong><span class="explain">${q.explain}</span>`;
+    } else if (first) {
+      fb.innerHTML = `<strong>정답! 복습도 완벽해요 👍</strong><span class="explain">${q.explain}</span><small>이 문제는 전에 도토리를 받았어요. 같은 문제로는 도토리를 한 번만 받을 수 있어요.</small>`;
+    } else {
+      fb.innerHTML = `<strong>정답! 힌트를 따라 해결했어요 👏</strong><span class="explain">${q.explain}</span><small>첫 시도에 맞히면 도토리를 받을 수 있어요.</small>`;
+    }
     return;
   }
 
@@ -445,7 +479,7 @@ function updateChallenges(concept, first) {
     c.specialStreak = first ? c.specialStreak + 1 : 0;
     if (c.specialStreak >= 5) award('special-streak');
   }
-  if (concept === 'circle-tangent') {
+  if (TANGENT_CONCEPTS.includes(concept)) {
     c.tangentStreak = first ? c.tangentStreak + 1 : 0;
     if (c.tangentStreak >= 3) award('tangent-pro');
   }
@@ -520,12 +554,20 @@ function finishQuiz() {
   const topic = quiz.topic;
 
   // 단원 완료 · 최고 기록 · 배지
-  state.best[topic] = Math.max(state.best[topic] ?? 0, r.understanding);
-  state.done[topic] = true;
-  save();
-  if (r.first === r.total && r.total >= 10) award('perfect');
+  const challenge = quiz.mode === 'challenge';
+  if (challenge) {
+    state.bestChallenge[topic] = Math.max(state.bestChallenge[topic] ?? 0, r.first);
+    save();
+    if (r.first >= 5) award('challenger');
+  } else {
+    state.best[topic] = Math.max(state.best[topic] ?? 0, r.understanding);
+    state.done[topic] = true;
+    save();
+    if (r.first === r.total && r.total >= 10) award('perfect');
+    if (state.done.trig && state.done.circle) award('explorer');
+  }
   if (r.hints === 0 && r.first >= r.total * 0.7) award('independent');
-  if (state.done.trig && state.done.circle) award('explorer');
+  $('#r-challenge').hidden = challenge;
 
   $('#quiz-progress-fill').style.width = '100%';
   $('#quiz-box').hidden = true;
@@ -536,7 +578,7 @@ function finishQuiz() {
   $('#r-correct').textContent = `${r.first} / ${r.total}`;
   $('#r-time').textContent = fmtTime(r.durationSec);
   $('#r-hints').textContent = `${r.hints}회`;
-  $('#r-acorns').textContent = `${r.first}개`;
+  $('#r-acorns').textContent = `${quiz.acorns}개`;
   $('#result-msg').textContent =
     r.understanding >= 90 ? '완벽에 가까워요! 숲속 수학 박사님이에요 🐿️'
       : r.understanding >= 70 ? '아주 잘했어요! 약한 개념만 한 번 더 보면 만점!'
@@ -566,7 +608,7 @@ function finishQuiz() {
   sendResult({
     school: state.school,
     studentId: state.studentId,
-    topic: TOPICS[topic].name,
+    topic: `${TOPICS[topic].name}${challenge ? ' 도전 심화' : ''}`,
     score: r.first,
     total: r.total,
     understanding: r.understanding,
@@ -579,6 +621,7 @@ function finishQuiz() {
     stampCount: state.stampCount,
     totalCorrect: state.totalCorrect,
     badges: state.badges.join(','),
+    solved: state.solved.join(','),
     timestamp: new Date().toISOString(),
   });
 }
@@ -588,6 +631,8 @@ function finishQuiz() {
    ========================================================= */
 function showPage(name) {
   if (name === 'concept') name = `concept-${state.topic}`;
+  let mode = 'normal';
+  if (name === 'challenge') { name = 'quiz'; mode = 'challenge'; }
   if (name !== 'quiz') clearInterval(quiz.timer);
   if (name !== 'concept-trig' && exp.playing) stopPlay();
 
@@ -597,9 +642,9 @@ function showPage(name) {
 
   if (name === 'topics') renderTopics();
   if (name === 'topic-home') renderTopicHome();
-  if (name === 'quiz') startQuiz();
+  if (name === 'quiz') startQuiz(mode);
   if (name === 'concept-trig') { drawLab(); renderUnit(); renderExperiment(); }
-  if (name === 'concept-circle') { renderInscribed(); renderTangent(); renderCyclic(); }
+  if (name === 'concept-circle') { renderInscribed(); renderTangent(); renderTangentLength(); renderCyclic(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -623,6 +668,7 @@ async function login(school, id) {
   const remote = await fetchRemoteProgress(school, id);
   if (!remote || state.studentId !== id || state.school !== school) return;
   const merged = new Set([...state.badges, ...pickProgress(remote).badges]);
+  state.solved = [...new Set([...state.solved, ...pickProgress(remote).solved])];
   if (progressValue(pickProgress(remote)) > progressValue(state)) {
     const r = pickProgress(remote);
     Object.assign(state, { acornCount: r.acornCount, stampCount: r.stampCount, totalCorrect: r.totalCorrect });
@@ -663,6 +709,7 @@ function init() {
   initExperiment();
   initInscribed();
   initTangent();
+  initTangentLength();
   initCyclic();
 
   const lastId = readJSON(LAST_ID_KEY, '');
@@ -708,7 +755,7 @@ function init() {
   $('#angle-range').addEventListener('input', drawLab);
   $('#hint-btn').addEventListener('click', showHint);
   $('#next-btn').addEventListener('click', nextQuestion);
-  $('#retry-btn').addEventListener('click', startQuiz);
+  $('#retry-btn').addEventListener('click', () => startQuiz(quiz.mode));
   $('#r-review').addEventListener('click', (e) => showPage(e.currentTarget.dataset.page));
   $('#stamp-modal-close').addEventListener('click', closeStampModal);
   document.addEventListener('keydown', (e) => {

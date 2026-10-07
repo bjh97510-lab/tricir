@@ -103,22 +103,72 @@ function triangleSVG({ theta, labels = {}, angleText = '', colored = false }) {
 }
 
 /* =========================================================
-   정적 그림 2: 원 (원주각 · 중심각 · 접선 · 내접사각형)
+   정적 그림 2: 원 (원주각 · 중심각 · 접선 · 내접사각형 · 접선의 길이)
    pts: { 이름: 수학 각도 }, segs: ['PA', 'OB'...], angles: [{ v, a, b, text }]
-   tangent: { at: 'T', ends: ['U', 'S'] }  (ends[0]은 at+90° 방향)
+   tangent: { at: 'T', ends: ['U', 'S'], len }  (ends[0]은 at+90° 방향)
    highlight: { from, to }  from에서 반시계로 to까지의 호 강조
+   outer: { name: 'P', deg, k, touch: ['A', 'B'] }  원 밖의 점 P(OP = k × 반지름)와 접선 PA, PB
+   inner: { P: ['AB', 'CD'] }  두 현의 교점
+   circum: { at: [접점 각도...], names: [꼭짓점...], touch: [접점 이름...] }  원에 외접하는 다각형
+   rights: [['A', 'O', 'P']]  꼭짓점 A의 직각 표시,  segLabels: [{ seg: 'PA', text: '6' }]
+   cx, cy, r: 원의 위치 · 반지름 바꾸기
    ========================================================= */
-function circleSVG({ pts = {}, center = true, segs = [], angles = [], tangent = null, highlight = null }) {
-  const C = { x: 200, y: 120 }, R = 92;
+/** 두 직선 p1p2, q1q2의 교점 */
+function lineInter(p1, p2, q1, q2) {
+  const d = (p1.x - p2.x) * (q1.y - q2.y) - (p1.y - p2.y) * (q1.x - q2.x);
+  if (Math.abs(d) < 1e-9) return { x: (p1.x + q1.x) / 2, y: (p1.y + q1.y) / 2 };
+  const t = ((p1.x - q1.x) * (q1.y - q2.y) - (p1.y - q1.y) * (q1.x - q2.x)) / d;
+  return { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+}
+/** V에 모이는 선들 사이에서 가장 넓은 틈 쪽으로 떨어진 글자 위치 */
+function labelAway(V, neighbors, dist = 18) {
+  const dirs = neighbors.map((N) => dirDeg(V, N)).sort((a, b) => a - b);
+  if (!dirs.length) return { x: V.x + dist, y: V.y - dist };
+  let best = 0, bestGap = -1;
+  for (let i = 0; i < dirs.length; i++) {
+    const next = i + 1 < dirs.length ? dirs[i + 1] : dirs[0] + 360;
+    if (next - dirs[i] > bestGap) { bestGap = next - dirs[i]; best = dirs[i] + bestGap / 2; }
+  }
+  return onCircle(V, dist, best);
+}
+
+function circleSVG({ pts = {}, center = true, segs = [], angles = [], tangent = null, highlight = null,
+  outer = null, inner = null, circum = null, rights = [], segLabels = [], cx, cy, r }) {
+  pts = { ...pts };
+  const R = r ?? (circum ? 70 : 92);
+  // 원 밖의 점이 그림 안에 들어오도록 원을 반대쪽으로 밀어요
+  const shift = outer ? Math.max(0, outer.k * R + 42 - 200) : 0;
+  const C = { x: cx ?? 200 - Math.cos(toRad(outer?.deg ?? 0)) * shift, y: cy ?? 120 };
   const P = {};
   const labelPos = {};
-  for (const [k, d] of Object.entries(pts)) {
-    P[k] = onCircle(C, R, d);
-    labelPos[k] = onCircle(C, R + 18, d);
-  }
+  const dots = new Set();
+  const addPt = (k, d) => { pts[k] = d; P[k] = onCircle(C, R, d); labelPos[k] = onCircle(C, R + 18, d); dots.add(k); };
+  for (const [k, d] of Object.entries(pts)) addPt(k, d);
   if (center) P.O = C;
 
-  let out = `<circle cx="${C.x}" cy="${C.y}" r="${R}" fill="#FFFBEF" stroke="${COLOR.wood}" stroke-width="3"/>`;
+  let back = '';   // 원 뒤에 그릴 것
+  let out = '';
+  if (circum) {
+    const { at, names, touch = [] } = circum;
+    const n = at.length;
+    const V = at.map((d, i) => {
+      const gap = norm(at[(i + 1) % n] - d) || 360;
+      return onCircle(C, R / Math.cos(toRad(gap / 2)), d + gap / 2);
+    });
+    names.forEach((nm, i) => {
+      P[nm] = V[i];
+      labelPos[nm] = onCircle(C, Math.hypot(V[i].x - C.x, V[i].y - C.y) + 18, dirDeg(C, V[i]));
+      dots.add(nm);
+    });
+    back += `<polygon points="${V.map((v) => `${v.x},${v.y}`).join(' ')}" fill="#FFF1C9" opacity=".7" stroke="${COLOR.wood}" stroke-width="3" stroke-linejoin="round"/>`;
+    at.forEach((d, i) => {
+      if (!touch[i]) return;
+      addPt(touch[i], d);
+      labelPos[touch[i]] = onCircle(C, R - 16, d);
+    });
+  }
+
+  out += `<circle cx="${C.x}" cy="${C.y}" r="${R}" fill="#FFFBEF" stroke="${COLOR.wood}" stroke-width="3"/>`;
   if (highlight) {
     const s = pts[highlight.from];
     out += arcAt(C, s, norm(pts[highlight.to] - s), { r: R, color: '#F2B937', width: 7 });
@@ -127,13 +177,39 @@ function circleSVG({ pts = {}, center = true, segs = [], angles = [], tangent = 
     const d = pts[tangent.at];
     const T = P[tangent.at];
     const [e1, e2] = tangent.ends;
-    P[e1] = onCircle(T, 135, d + 90);
-    P[e2] = onCircle(T, 135, d - 90);
-    labelPos[e1] = onCircle(T, 152, d + 90);
-    labelPos[e2] = onCircle(T, 152, d - 90);
+    const len = tangent.len ?? 135;
+    P[e1] = onCircle(T, len, d + 90);
+    P[e2] = onCircle(T, len, d - 90);
+    labelPos[e1] = onCircle(T, len + 17, d + 90);
+    labelPos[e2] = onCircle(T, len + 17, d - 90);
     out += svgLine(P[e1], P[e2], COLOR.adj, 3.5);
   }
+  if (outer) {
+    const { name = 'P', deg, k = 1.95, touch = ['A', 'B'] } = outer;
+    const phi = toDeg(Math.acos(1 / k));
+    P[name] = onCircle(C, R * k, deg);
+    labelPos[name] = onCircle(C, R * k + 20, deg);
+    dots.add(name);
+    touch.forEach((t, i) => {
+      addPt(t, deg + (i === 0 ? -phi : phi));
+      out += svgLine(P[name], P[t], COLOR.adj, 3.5);
+    });
+  }
+  for (const [nm, [s1, s2]] of Object.entries(inner || {})) {
+    P[nm] = lineInter(P[s1[0]], P[s1[1]], P[s2[0]], P[s2[1]]);
+    labelPos[nm] = labelAway(P[nm], [P[s1[0]], P[s1[1]], P[s2[0]], P[s2[1]]], 20);
+    dots.add(nm);
+  }
   for (const s of segs) out += svgLine(P[s[0]], P[s[1]], COLOR.wood, 3);
+  for (const { seg, text, dx = 0, dy = 0, size = 17 } of segLabels) {
+    const p = P[seg[0]], q = P[seg[1]];
+    const M = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+    const len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+    let nx = -(q.y - p.y) / len, ny = (q.x - p.x) / len;
+    if (nx * (M.x - C.x) + ny * (M.y - C.y) < 0) { nx = -nx; ny = -ny; }   // 원 중심에서 먼 쪽에 글자
+    out += svgText({ x: M.x + nx * 15 + dx, y: M.y + ny * 15 + dy }, text, { size, color: COLOR.hypText });
+  }
+  for (const [v, a, b] of rights) out += rightMark(P[v], P[a], P[b], 11);
   for (const a of angles) {
     const isO = a.v === 'O';
     out += angleMark(P[a.v], P[a.a], P[a.b], {
@@ -143,10 +219,10 @@ function circleSVG({ pts = {}, center = true, segs = [], angles = [], tangent = 
   }
   if (center) out += svgDot(C, 4) + svgText({ x: C.x - 13, y: C.y - 10 }, 'O', { size: 17 });
   for (const k of Object.keys(labelPos)) {
-    if (k in pts) out += svgDot(P[k]);
+    if (dots.has(k)) out += svgDot(P[k]);
     out += svgText(labelPos[k], k, { size: 19 });
   }
-  return out;
+  return back + out;
 }
 
 /* =========================================================
@@ -599,7 +675,72 @@ function initTangent() {
 }
 
 /* =========================================================
-   원 3: 원에 내접하는 사각형 드래그
+   원 3: 원의 접선의 길이 드래그 (원 밖의 점 P 이동)
+   ========================================================= */
+const TL_C = { x: 228, y: 150 }, TL_R = 82, TL_UNIT = 4 / TL_R;   // 반지름을 4칸으로
+const TL_DEFAULT = { x: 62, y: 150 };
+const tl = { ...TL_DEFAULT, tri: false };
+
+function renderTangentLength() {
+  const C = TL_C, R = TL_R, Pp = { x: tl.x, y: tl.y };
+  const k = Math.hypot(Pp.x - C.x, Pp.y - C.y) / R;
+  const dir = dirDeg(C, Pp);
+  const phi = toDeg(Math.acos(1 / k));
+  const A = onCircle(C, R, dir - phi), B = onCircle(C, R, dir + phi);
+  const len = R * Math.sqrt(k * k - 1) * TL_UNIT;
+  const angP = angleBetween(Pp, A, B), angO = angleBetween(C, A, B);
+  const f1 = (v) => (+v.toFixed(1)).toString();
+
+  let out = '';
+  if (tl.tri) {
+    out += `<polygon points="${C.x},${C.y} ${A.x},${A.y} ${Pp.x},${Pp.y}" fill="${COLOR.opp}" opacity=".22"/>`;
+    out += `<polygon points="${C.x},${C.y} ${B.x},${B.y} ${Pp.x},${Pp.y}" fill="${COLOR.adj}" opacity=".22"/>`;
+  }
+  out += `<circle cx="${C.x}" cy="${C.y}" r="${R}" fill="#FFFBEF" fill-opacity="${tl.tri ? 0 : 1}" stroke="${COLOR.wood}" stroke-width="3"/>`;
+  out += svgLine(C, A, '#D9C3A0', 2, '5 5') + svgLine(C, B, '#D9C3A0', 2, '5 5') + svgLine(C, Pp, '#D9C3A0', 2, '5 5');
+  out += rightMark(A, C, Pp, 11) + rightMark(B, C, Pp, 11);
+  out += svgLine(Pp, A, COLOR.opp, 4) + svgLine(Pp, B, COLOR.adj, 4);
+  out += angleMark(Pp, A, B, { r: 26, color: COLOR.hyp, text: fmtDeg(angP), textR: 48, textColor: COLOR.hypText });
+  out += angleMark(C, A, B, { r: 20, color: COLOR.q, text: fmtDeg(angO), textR: 38, textColor: '#6B5BC4' });
+  // 길이 글자: 접선 중점에서 원 중심과 먼 쪽으로
+  const lab = (Q, color) => {
+    const M = { x: (Pp.x + Q.x) / 2, y: (Pp.y + Q.y) / 2 };
+    const away = dirDeg(C, M);
+    return svgText(onCircle(M, 16, away), f1(len), { size: 16, color });
+  };
+  out += lab(A, COLOR.oppText) + lab(B, COLOR.adjText);
+  out += svgDot(C, 4) + svgText({ x: C.x + 4, y: C.y + 18 }, 'O', { size: 17 });
+  out += svgDot(A) + svgText(onCircle(C, R + 18, dir - phi), 'A') + svgDot(B) + svgText(onCircle(C, R + 18, dir + phi), 'B');
+  out += svgText(onCircle(Pp, 22, dir), 'P');
+  out += svgHandle(Pp, COLOR.hyp);
+  $('#tanlen-svg').innerHTML = out;
+
+  $('#l-pa').textContent = f1(len);
+  $('#l-pb').textContent = `${f1(len)} = PA`;
+  $('#l-apb').textContent = fmtDeg(angP);
+  $('#l-aob').textContent = `${fmtDeg(angO)} (합 ${fmtDeg(angP + angO)})`;
+  $('#l-note').textContent = tl.tri
+    ? `✔ 직각삼각형 OAP와 OBP는 OA = OB(반지름), OP는 공통, ∠A = ∠B = 90°라서 합동이에요. 그래서 PA = PB = ${f1(len)}!`
+    : `✔ 점 P를 어디로 옮겨도 PA = PB예요. 접선은 반지름과 수직(∠A = ∠B = 90°)이라 ∠APB + ∠AOB = ${fmtDeg(angP + angO)}예요.`;
+}
+
+function initTangentLength() {
+  makeDraggable($('#tanlen-svg'), () => ({ p: { x: tl.x, y: tl.y } }), (key, pt) => {
+    const C = TL_C, R = TL_R;
+    const dir = dirDeg(C, pt);
+    const k = Math.min(2.6, Math.max(1.3, Math.hypot(pt.x - C.x, pt.y - C.y) / R));
+    let Q = onCircle(C, k * R, dir);
+    Q = { x: Math.min(336, Math.max(28, Q.x)), y: Math.min(272, Math.max(28, Q.y)) };   // 그림 밖으로 못 나가게
+    if (Math.hypot(Q.x - C.x, Q.y - C.y) < R * 1.25) return;
+    tl.x = Q.x; tl.y = Q.y;
+    renderTangentLength();
+  });
+  $('#tl-tri').addEventListener('change', (e) => { tl.tri = e.target.checked; renderTangentLength(); });
+  $('#tl-reset').addEventListener('click', () => { Object.assign(tl, TL_DEFAULT); renderTangentLength(); });
+}
+
+/* =========================================================
+   원 4: 원에 내접하는 사각형 드래그
    ========================================================= */
 const CYC_C = { x: 180, y: 150 }, CYC_R = 112;
 const CYC_DEFAULT = { a: 150, b: 215, c: 300, d: 40 };

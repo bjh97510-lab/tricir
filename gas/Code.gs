@@ -3,7 +3,7 @@
  *
  * 시트 2개를 자동으로 만들어 사용합니다.
  *  - 퀴즈기록 : 퀴즈를 끝낼 때마다 한 줄 (디지털 형성평가용 상세 기록)
- *  - 학생현황 : 학번별 최신 도토리 / 칭찬 도장 / 배지 (한 학생당 한 줄)
+ *  - 학생현황 : 학번별 최신 도토리 / 칭찬 도장 / 배지 / 도토리를 받은 문제 (한 학생당 한 줄)
  *
  * 설정 순서
  *  1) 구글 시트 → 확장 프로그램 → Apps Script → 이 코드 전체 붙여넣기 → 저장
@@ -22,8 +22,9 @@ const LOG_HEADERS = [
 ];
 const STATUS_HEADERS = [
   '학번', '학교', '도토리', '칭찬도장', '누적정답', '배지',
-  '최근단원', '최근점수', '최근이해도', '최근약한개념', '최근기록시간',
+  '최근단원', '최근점수', '최근이해도', '최근약한개념', '최근기록시간', '정답문제',
 ];
+const SOLVED_COL = STATUS_HEADERS.indexOf('정답문제') + 1;   // 도토리를 받은 문제 ID 목록 (다른 기기에서도 중복 지급 방지)
 
 /* ---------- 시트 메뉴 (처음 설정용) ---------- */
 function onOpen() {
@@ -53,7 +54,7 @@ function testRecord() {
   const res = doPost({ postData: { contents: JSON.stringify({
     school: '테스트중학교', studentId: '99999', topic: '테스트', score: 25, total: 30, understanding: 83, durationSec: 600, hintCount: 3,
     wrongConcepts: '원주각과 중심각×2', misconceptions: '중심각 1/2 누락×1', weakConcept: '원주각과 중심각',
-    acornCount: 5, stampCount: 2, totalCorrect: 25, badges: 'first-stamp',
+    acornCount: 5, stampCount: 2, totalCorrect: 25, badges: 'first-stamp', solved: 'tabc123,c1def45',
   }) } });
   SpreadsheetApp.getActiveSpreadsheet().toast(res.getContent(), '테스트 결과 (학번 99999 줄은 지워도 돼요)', 8);
 }
@@ -78,6 +79,7 @@ function doPost(e) {
     const totalCorrect = toInt_(d.totalCorrect);
     const badges = text_(d.badges);
     const weak = text_(d.weakConcept);
+    const solved = long_(d.solved);
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     getSheet_(ss, SHEET_LOG, LOG_HEADERS).appendRow([
@@ -87,7 +89,7 @@ function doPost(e) {
 
     const status = getSheet_(ss, SHEET_STATUS, STATUS_HEADERS);
     const row = findRow_(status, id, school);
-    const values = [id, school, acorn, stamp, totalCorrect, badges, topic, `${score}/${total}`, understanding, weak, now];
+    const values = [id, school, acorn, stamp, totalCorrect, badges, topic, `${score}/${total}`, understanding, weak, now, solved];
     if (row) {
       status.getRange(row, 1, 1, values.length).setValues([values]);
     } else {
@@ -117,6 +119,7 @@ function doGet(e) {
   if (!row) return json_({ ok: true, found: false });
 
   const [, , acorn, stamp, totalCorrect, badges] = status.getRange(row, 1, 1, 6).getValues()[0];
+  const solved = status.getRange(row, SOLVED_COL).getValue();
   return json_({
     ok: true,
     found: true,
@@ -124,6 +127,7 @@ function doGet(e) {
     stampCount: toInt_(stamp),
     totalCorrect: toInt_(totalCorrect),
     badges: String(badges || ''),
+    solved: String(solved || ''),
   });
 }
 
@@ -146,6 +150,14 @@ function getSheet_(ss, name, headers) {
     sh.insertColumnAfter(col);
     sh.getRange(1, col + 1).setValue('학교').setFontWeight('bold');
   }
+  // 예전 시트에 없는 머리글(예: '정답문제')은 맨 오른쪽에 추가해요.
+  const now = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+  headers.forEach((h) => {
+    if (now.indexOf(h) === -1) {
+      sh.getRange(1, sh.getLastColumn() + 1).setValue(h).setFontWeight('bold');
+      now.push(h);
+    }
+  });
   return sh;
 }
 
@@ -174,6 +186,10 @@ function toInt_(v) {
 function text_(v) {
   const s = String(v == null ? '' : v).slice(0, 500);
   return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+/** 문제 ID 목록처럼 긴 글 (영문 · 숫자 · 쉼표 · 밑줄만 남김) */
+function long_(v) {
+  return String(v == null ? '' : v).replace(/[^A-Za-z0-9,_]/g, '').slice(0, 20000);
 }
 
 function json_(obj) {

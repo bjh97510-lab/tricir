@@ -149,7 +149,7 @@ button { font: inherit; color: inherit; }
 }
 .counter.bump { animation: bump .45s ease; }
 .squirrel { width: 54px; height: 54px; flex: none; }
-.counter-body { min-width: 200px; }
+.counter-body { min-width: 260px; }
 .counter-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; line-height: 1.1; }
 .counter-head span { font-size: 16px; }
 .counter-head strong { font-size: 28px; color: var(--wood-dark); }
@@ -166,9 +166,9 @@ button { font: inherit; color: inherit; }
 }
 .acorn-slots {
   position: relative; height: 100%; padding: 0 4px;
-  display: grid; grid-template-columns: repeat(10, 1fr); align-items: center; justify-items: center;
+  display: grid; grid-template-columns: repeat(15, 1fr); align-items: center; justify-items: center;
 }
-.acorn-slot { width: 19px; height: 19px; filter: grayscale(1); opacity: .25; transition: opacity .3s, filter .3s; }
+.acorn-slot { width: 16px; height: 16px; filter: grayscale(1); opacity: .25; transition: opacity .3s, filter .3s; }
 .acorn-slot.filled { filter: none; opacity: 1; animation: pop .45s ease; }
 
 .stamp-counter { background: #FFEFEA; border-color: #F3B1A6; }
@@ -539,6 +539,27 @@ button { font: inherit; color: inherit; }
 /* 원에 내접하는 사각형 패널 */
 .cyclic-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: center; }
 @media (max-width: 960px) { .cyclic-layout { grid-template-columns: 1fr; } }
+
+/* ===== 도전 심화 · 도토리 중복 표시 ===== */
+.cards.three { grid-template-columns: 1fr 1fr 1fr; }
+.challenge-card { background: linear-gradient(160deg, #FFF0E8, #FFD2BC); border-color: #F08A5D; }
+.challenge-card h2 { color: #C2502A; }
+.card-emoji { display: grid; place-items: center; font-size: 84px; line-height: 1; }
+.btn-challenge { background: #F08A5D; color: #fff; box-shadow: 0 5px 0 #C2502A; }
+.btn-challenge:hover { filter: brightness(1.06); }
+.btn-challenge:active { box-shadow: 0 2px 0 #C2502A; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chip-row .concept-chip { margin-top: 0; }
+.chip-challenge { background: #FFE1D3; color: #C2502A; }
+.chip-solved { background: var(--wood-1); color: var(--ink-soft); }
+.quiz-panel.challenge { border-color: #F08A5D; }
+.quiz-panel.challenge #quiz-progress-fill { background: #F08A5D; }
+.facts.mini { margin-top: 12px; grid-template-columns: 1fr; gap: 6px; }
+.facts.mini li { padding: 8px 12px; }
+.facts.mini b { font-size: 17px; }
+.facts.mini span { font-size: 14px; }
+@media (max-width: 960px) { .cards.three { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .cards.three { grid-template-columns: 1fr; } .acorn-slot { width: 13px; height: 13px; } }
 
 /* 학교 이름 입력 · ID 카드 학교 */
 .school-input {

@@ -154,9 +154,9 @@
           <div class="counter-body">
             <div class="counter-head">
               <span>나의 도토리</span>
-              <strong><span id="acorn-num">0</span><small>/10</small></strong>
+              <strong><span id="acorn-num">0</span><small>/15</small></strong>
             </div>
-            <div class="gauge" id="acorn-gauge" role="progressbar" aria-label="도토리" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
+            <div class="gauge" id="acorn-gauge" role="progressbar" aria-label="도토리" aria-valuemin="0" aria-valuemax="15" aria-valuenow="0">
               <div class="gauge-fill" id="acorn-fill"></div>
               <div class="acorn-slots" id="acorn-slots"></div>
             </div>
@@ -190,7 +190,7 @@
           <button class="big-card quiz-card" data-topic="circle" type="button">
             <svg class="card-icon" aria-hidden="true"><use href="#icon-circle"/></svg>
             <h2>원의 성질</h2>
-            <p>원주각과 중심각, 접선과 현,<br>원에 내접하는 사각형</p>
+            <p>원주각과 중심각, 접선과 현,<br>원의 접선, 내접사각형</p>
             <span class="card-meta" id="meta-circle"></span>
           </button>
         </div>
@@ -208,7 +208,7 @@
           <button class="back-btn" data-go="topics" type="button">← 단원 선택</button>
           <h2 id="topic-home-title">삼각비</h2>
         </div>
-        <div class="cards">
+        <div class="cards three">
           <button class="big-card concept-card" data-go="concept" type="button">
             <svg class="card-icon" aria-hidden="true"><use href="#icon-book"/></svg>
             <h2>개념 정리</h2>
@@ -218,6 +218,12 @@
             <svg class="card-icon" aria-hidden="true"><use href="#icon-quiz"/></svg>
             <h2>퀴즈 풀기</h2>
             <p>첫 번에 맞히면 도토리 1개!<br>틀리면 단계별 힌트가 나와요</p>
+          </button>
+          <button class="big-card challenge-card" data-go="challenge" type="button">
+            <span class="card-icon card-emoji" aria-hidden="true">🔥</span>
+            <h2>도전 심화</h2>
+            <p>두세 단계로 푸는 심화 8문제<br>첫 번에 맞히면 도토리 2개!</p>
+            <span class="card-meta" id="meta-challenge"></span>
           </button>
         </div>
       </section>
@@ -398,7 +404,35 @@
           </article>
 
           <article class="panel wide">
-            <h3><span class="num">3</span> 원에 내접하는 사각형의 대각</h3>
+            <h3><span class="num">3</span> 원의 접선의 길이</h3>
+            <div class="cyclic-layout">
+              <div>
+                <p>원 밖의 점 P에서 원 O에 접선을 두 개 그었어요. <b class="c-handle">점 P를 드래그</b>해서 두 접선 <b class="c-opp">PA</b>, <b class="c-adj">PB</b>의 길이를 비교해 보세요. 접선은 반지름 OA, OB와 <b>수직</b>이에요.</p>
+                <svg id="tanlen-svg" class="figure interactive" viewBox="0 0 360 300" role="img" aria-label="원의 접선의 길이 드래그 도구"></svg>
+                <div class="toggles">
+                  <label><input type="checkbox" id="tl-tri"> 두 직각삼각형 색칠해서 이유 보기</label>
+                  <button class="link-btn" id="tl-reset" type="button">처음 위치로</button>
+                </div>
+              </div>
+              <div>
+                <div class="readout">
+                  <div class="ratio-row"><span class="ratio-name c-opp">접선 PA</span><b class="ratio-val" id="l-pa"></b></div>
+                  <div class="ratio-row"><span class="ratio-name c-adj">접선 PB</span><b class="ratio-val" id="l-pb"></b></div>
+                  <div class="ratio-row"><span class="ratio-name c-hyp">∠APB</span><b class="ratio-val" id="l-apb"></b></div>
+                  <div class="ratio-row"><span class="ratio-name c-q">∠AOB</span><b class="ratio-val" id="l-aob"></b></div>
+                </div>
+                <p class="tip" id="l-note"></p>
+                <ul class="facts mini">
+                  <li><b>접선 ⊥ 반지름</b><span>∠OAP = ∠OBP = 90°</span></li>
+                  <li><b>PA = PB</b><span>한 점에서 그은 두 접선의 길이는 같아요</span></li>
+                  <li><b>외접사각형</b><span>AB + CD = AD + BC (마주 보는 변의 합이 같아요)</span></li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel wide">
+            <h3><span class="num">4</span> 원에 내접하는 사각형의 대각</h3>
             <div class="cyclic-layout">
               <div>
                 <p>네 꼭짓점이 모두 원 위에 있는 사각형 ABCD예요. <b class="c-handle">점 A, B, C, D</b>를 원 위에서 이리저리 옮겨 보세요. 마주 보는 두 각의 합은 항상 <b>180°</b>!</p>
@@ -421,12 +455,14 @@
           </article>
 
           <article class="panel wide">
-            <h3><span class="num">4</span> 꼭 기억할 원의 성질</h3>
+            <h3><span class="num">5</span> 꼭 기억할 원의 성질</h3>
             <ul class="facts">
               <li><b>원주각 = ½ × 중심각</b><span>한 호에 대한 원주각은 그 호에 대한 중심각의 절반</span></li>
               <li><b>같은 호 → 같은 원주각</b><span>한 호에 대한 원주각의 크기는 모두 같아요</span></li>
               <li><b>지름 → 90°</b><span>반원에 대한 원주각은 항상 90°</span></li>
               <li><b>접선과 현이 이루는 각</b><span>= 그 각 안에 있는 호에 대한 원주각</span></li>
+              <li><b>접선 ⊥ 반지름</b><span>접선은 접점을 지나는 반지름과 수직</span></li>
+              <li><b>두 접선의 길이는 같다</b><span>원 밖의 한 점에서 그은 두 접선 PA = PB</span></li>
               <li><b>내접사각형의 대각</b><span>마주 보는 두 각의 합은 180°</span></li>
               <li><b>원주각 ∝ 호의 길이</b><span>한 원에서 원주각의 크기는 호의 길이에 정비례</span></li>
             </ul>
@@ -449,7 +485,10 @@
             <span class="quiz-timer" id="quiz-timer">⏱ 0:00</span>
             <span class="quiz-score">정답 <b id="quiz-score">0</b></span>
           </div>
-          <span class="concept-chip" id="q-concept"></span>
+          <div class="chip-row">
+            <span class="concept-chip" id="q-concept"></span>
+            <span class="concept-chip chip-solved" id="q-solved" hidden>🌰 전에 도토리를 받은 문제 · 이번엔 복습!</span>
+          </div>
           <p class="q-text" id="q-text"></p>
           <svg class="figure q-figure" id="q-figure" viewBox="0 0 400 250" role="img" aria-label="문제 그림" hidden></svg>
           <div class="choices" id="q-choices"></div>
@@ -500,6 +539,7 @@
           <p class="sync-status" aria-live="polite"></p>
           <div class="center btn-row">
             <button class="btn btn-primary" id="retry-btn" type="button">다시 풀기</button>
+            <button class="btn btn-challenge" id="r-challenge" data-go="challenge" type="button">🔥 도전 심화 풀기</button>
             <button class="btn btn-ghost" data-go="topics" type="button">단원 선택</button>
           </div>
         </div>
@@ -514,7 +554,7 @@
         <img class="modal-stamp" id="modal-stamp-img" alt="참 잘했어요 도장">
       </div>
       <h2 id="stamp-modal-title">칭찬 도장 획득!</h2>
-      <p id="stamp-modal-text">도토리 10개를 모아 칭찬 도장을 받았어요.</p>
+      <p id="stamp-modal-text">도토리 15개를 모아 칭찬 도장을 받았어요.</p>
       <button class="btn btn-primary" id="stamp-modal-close" type="button">고마워요!</button>
     </div>
   </div>
